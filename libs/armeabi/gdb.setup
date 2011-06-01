@@ -1,0 +1,2 @@
+set solib-search-path /Users/feldstein/Projects/FirstTest/obj/local/armeabi
+directory /Users/feldstein/Downloads/android-ndk-r5b/platforms/android-8/arch-arm/usr/include /Users/feldstein/Downloads/android-ndk-r5b/sources/cxx-stl/system /Users/feldstein/Projects/FirstTest/jni
