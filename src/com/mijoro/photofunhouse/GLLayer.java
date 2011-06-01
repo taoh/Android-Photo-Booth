@@ -35,7 +35,6 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
                                                 // power of 2
 
     public int previewFrameWidth = 0;
-
     public int previewFrameHeight = 0;
     public int textureSize = -1;
     
@@ -48,7 +47,6 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
     static {
         System.loadLibrary("yuv420sp2rgb");
     }
-
 
     /**
      * native function, that converts a byte array from ycbcr420 to RGB
@@ -64,7 +62,6 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
     public GLLayer(Context c) {
         super(c);
         setEGLContextClientVersion(2);
-        // this.setEGLConfigChooser(5, 6, 5, 8, 16, 0);
         this.setRenderer(this);
         mContext = c;
         mTriangleVertices = ByteBuffer.allocateDirect(mTriangleVerticesData.length
@@ -100,14 +97,14 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
         GLES20.glEnableVertexAttribArray(maTextureHandle);
         checkGlError("glEnableVertexAttribArray maTextureHandle");
 
-        long time = SystemClock.uptimeMillis() % 4000L;
-        float angle = 0.090f * ((int) time);
-        Matrix.setRotateM(mMMatrix, 0, angle, 0, 0, 1.0f);
+        Matrix.setRotateM(mMMatrix, 0, 90, 0, 0, 1.0f);
+//        Matrix.scaleM(mMMatrix, 0, 2, 2, 2);
+//        Matrix.translateM(mMMatrix, 0, .25f, -.35f, 0);
         Matrix.multiplyMM(mMVPMatrix, 0, mVMatrix, 0, mMMatrix, 0);
         Matrix.multiplyMM(mMVPMatrix, 0, mProjMatrix, 0, mMVPMatrix, 0);
 
         GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, mMVPMatrix, 0);
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 3);
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6);
         checkGlError("glDrawArrays");
     }
 
@@ -118,8 +115,6 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
     }
 
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-     // Ignore the passed-in GL10 interface, and use the GLES20
-        // class's static methods instead.
         mProgram = createProgram(mVertexShader, mFragmentShader);
         if (mProgram == 0) {
             return;
@@ -141,30 +136,10 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
             throw new RuntimeException("Could not get attrib location for uMVPMatrix");
         }
 
-        /*
-         * Create our texture. This has to be done each time the
-         * surface is created.
-         */
-
-        int[] textures = new int[1];
-        GLES20.glGenTextures(1, textures, 0);
-
-        mTextureID = textures[0];
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextureID);
-
-        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER,
-                GLES20.GL_NEAREST);
-        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D,
-                GLES20.GL_TEXTURE_MAG_FILTER,
-                GLES20.GL_LINEAR);
-
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S,
-                GLES20.GL_REPEAT);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T,
-                GLES20.GL_REPEAT);
         Matrix.setLookAtM(mVMatrix, 0, 0, 0, -5, 0f, 0f, 0f, 0f, 1.0f, 0.0f);
     }
-
+    float texRatioHeight = 1.0f;
+    float texRatioWidth = 1.0f;
     /**
      * Generates a texture from the black and white array filled by the
      * onPreviewFrame method.
@@ -178,15 +153,19 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
             int tex = cameraTexture[0];
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex);
             if (textureSize > -1) {
-                GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGB, textureSize,
-                        textureSize, 0, GLES20.GL_RGB, GLES20.GL_UNSIGNED_BYTE ,
-                        null);
+                if (!initialized) {
+                    GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGB, textureSize,
+                            textureSize, 0, GLES20.GL_RGB, GLES20.GL_UNSIGNED_BYTE ,
+                            null);
+                    initialized = true;
+                }
                 GLES20.glTexSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, previewFrameWidth, previewFrameHeight,
                         GLES20.GL_RGB, GLES20.GL_UNSIGNED_BYTE, buffer);
                 GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
             }
         }
     }
+    boolean initialized = false;
 
     boolean dirty = false;
     ByteBuffer buffer = ByteBuffer.wrap(glCameraFrame);
@@ -198,15 +177,28 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
      * loop thread) is started by setting the newFrameLock to true.
      */
     public void onPreviewFrame(byte[] yuvs, Camera camera) {
-        System.out.println("onPreviewFrame");
         if (textureSize == -1) {
             textureSize = camLayer.textureSize;
             previewFrameHeight = camLayer.previewFrameHeight;
             previewFrameWidth = camLayer.previewFrameWidth;
             glCameraFrame = new byte[previewFrameHeight * previewFrameWidth * 3];
+            texRatioHeight = 1.0f - (1.0f *previewFrameHeight) / (1.0f * textureSize);
+            texRatioWidth = (1.0f * previewFrameWidth) / (1.0f * textureSize);
+            setTextureRatio(texRatioWidth, texRatioHeight);
             buffer = ByteBuffer.wrap(glCameraFrame);
         }
         yuv420sp2rgb(yuvs, previewFrameWidth, previewFrameHeight, textureSize, glCameraFrame);
+    }
+    
+    public void setTextureRatio(float width, float height) {
+        System.out.println("New attribs " +width +"/" + height);
+        mTriangleVertices.put(8, width);
+        mTriangleVertices.put(13, width);
+        mTriangleVertices.put(28, width);
+        
+        mTriangleVertices.put(4, height);
+        mTriangleVertices.put(9, height);
+        mTriangleVertices.put(19, height);        
     }
 
     FloatBuffer makeFloatBuffer(float[] arr) {
@@ -278,10 +270,16 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
     private static final int TRIANGLE_VERTICES_DATA_POS_OFFSET = 0;
     private static final int TRIANGLE_VERTICES_DATA_UV_OFFSET = 3;
     private final float[] mTriangleVerticesData = {
-            // X, Y, Z, U, V
-            -1.0f, -0.5f, 0, -0.5f, 0.0f,
-            1.0f, -0.5f, 0, 1.5f, -0.0f,
-            0.0f,  1.11803399f, 0, 0.5f,  1.61803399f };
+            // X,    Y,   Z,  U,    V
+            -1.0f, -1.0f, 0, 0.0f, 0.0f,// 0  1  2  3  4
+            1.0f,  -1.0f, 0, 1.0f, 0.0f,// 5  6  7  8  9
+            1.0f,   1.0f, 0, 1.0f, 1.0f,// 10 11 12 13 14
+
+            -1.0f, -1.0f, 0, 0.0f, 0.0f,// 15 16 17 18 19
+            -1.0f, 1.0f,  0, 0.0f, 1.0f,// 20 21 22 23 24
+            1.0f,  1.0f,  0, 1.0f, 1.0f,// 25 26 27 28 29
+            
+    };
 
     private FloatBuffer mTriangleVertices;
 
@@ -292,15 +290,24 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
         "varying vec2 vTextureCoord;\n" +
         "void main() {\n" +
         "  gl_Position = uMVPMatrix * aPosition;\n" +
-        "  vTextureCoord = aTextureCoord;\n" +
+        "  vTextureCoord = vec2(aTextureCoord.x, 1.0-aTextureCoord.y);\n" +
         "}\n";
 
+    private final String mFragmentShaderBulge =
+        "precision mediump float;\n" +
+        "varying vec2 vTextureCoord;\n" +
+        "uniform sampler2D sTexture;\n" +
+        "void main() {\n" +
+        "  vec2 cen = vec2(0.5,0.5) - vTextureCoord.xy;\n" +
+        "  vec2 mcen =  0.07*log(length(cen))*normalize(cen);\n" +
+        "  gl_FragColor = texture2D(sTexture, vTextureCoord.xy+mcen);\n" +
+        "}\n";
     private final String mFragmentShader =
         "precision mediump float;\n" +
         "varying vec2 vTextureCoord;\n" +
         "uniform sampler2D sTexture;\n" +
         "void main() {\n" +
-        "  gl_FragColor = texture2D(sTexture, vTextureCoord);\n" +
+        "  gl_FragColor = texture2D(sTexture, vTextureCoord.xy);\n" +
         "}\n";
 
     private float[] mMVPMatrix = new float[16];
