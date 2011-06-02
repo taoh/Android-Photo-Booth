@@ -1,8 +1,6 @@
 
 package com.mijoro.photofunhouse;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -10,41 +8,21 @@ import java.nio.FloatBuffer;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
+import com.mijoro.photofunhouse.CameraPreviewSink.TextureRatio;
+
 import android.content.Context;
-import android.hardware.Camera;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
 import android.opengl.GLSurfaceView.Renderer;
-import android.os.SystemClock;
 import android.util.Log;
-import android.view.SurfaceHolder;
 import android.view.View;
 
-/**
- * This class uses OpenGL ES to render the camera's viewfinder image on the
- * screen. Unfortunately I don't know much about OpenGL (ES). The code is mostly
- * copied from some examples. The only interesting stuff happens in the main
- * loop (the run method) and the onPreviewFrame method.
- */
-public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
-        Camera.PreviewCallback, Renderer {
+public class GLLayer extends GLSurfaceView implements Renderer {
 
-    int[] cameraTexture;
-
-    byte[] glCameraFrame = new byte[512 * 512]; // size of a texture must be a
-                                                // power of 2
+    private CameraPreviewSink sink;
+    private TextureRatio mTexRatio;
     
-    public int previewFrameWidth = 0;
-    public int previewFrameHeight = 0;
-    public int textureSize = -1;
-    
-    private CamLayer camLayer;
-
-    FloatBuffer cubeBuff;
-
-    FloatBuffer texBuff;
-
     static {
         System.loadLibrary("yuv420sp2rgb");
     }
@@ -58,31 +36,36 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
      * @param textureSize
      * @param out
      */
-    private native void yuv420sp2rgb(byte[] in, int width, int height, int textureSize, byte[] out);
+    public native void yuv420sp2rgb(byte[] in, int width, int height, int textureSize, byte[] out);
+    static GLLayer layer;
+    // What an ugly hack to make this a static method without having to refactor the jni code :)
+    public static void decode(byte[] in, int width, int height, int textureSize, byte[] out) {
+        if (layer == null) return;
+        layer.yuv420sp2rgb(in, width, height, textureSize, out);
+    }
+
 
     public GLLayer(Context c) {
         super(c);
+        layer = this;
         setEGLContextClientVersion(2);
         this.setRenderer(this);
-        mContext = c;
         mTriangleVertices = ByteBuffer.allocateDirect(mTriangleVerticesData.length
                 * FLOAT_SIZE_BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
         mTriangleVertices.put(mTriangleVerticesData).position(0);
         
         setOnClickListener(new OnClickListener() {
-            
             public void onClick(View v) {
                 ++mProgramCounter;
                 if (mProgramCounter >= mPrograms.length) mProgramCounter = 0;
                 mProgram = mPrograms[mProgramCounter];
             }
         });
+        sink = new CameraPreviewSink();
+        mTexRatio = sink.getTextureRatio();
+        setTextureRatio(mTexRatio.width, mTexRatio.height);
     }
     
-    public void setCamLayer(CamLayer c) {
-        camLayer = c;
-    }
-
     public void onDrawFrame(GL10 gl) {
      // Ignore the passed-in GL10 interface, and use the GLES20
         // class's static methods instead.
@@ -92,7 +75,7 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
         checkGlError("glUseProgram");
 
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        bindCameraTexture(gl);
+        sink.bindTexture();
 
         mTriangleVertices.position(TRIANGLE_VERTICES_DATA_POS_OFFSET);
         GLES20.glVertexAttribPointer(maPositionHandle, 3, GLES20.GL_FLOAT, false,
@@ -106,8 +89,8 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
         checkGlError("glVertexAttribPointer maTextureHandle");
         GLES20.glEnableVertexAttribArray(maTextureHandle);
         checkGlError("glEnableVertexAttribArray maTextureHandle");
-        
-        GLES20.glUniform2f(muSizeHandle, texRatioWidth, texRatioHeight);
+        if (mTexRatio != null)
+            GLES20.glUniform2f(muSizeHandle, mTexRatio.width, mTexRatio.height);
         
         GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, mMVPMatrix, 0);
         GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6);
@@ -148,57 +131,6 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
         }
         
         Matrix.setIdentityM(mMVPMatrix, 0);
-    }
-    float texRatioHeight = 1.0f;
-    float texRatioWidth = 1.0f;
-    /**
-     * Generates a texture from the black and white array filled by the
-     * onPreviewFrame method.
-     */
-    void bindCameraTexture(GL10 gl) {
-        synchronized (this) {
-            if (cameraTexture == null)  {
-                cameraTexture = new int[1];
-                GLES20.glGenTextures(1, cameraTexture, 0);
-            }
-            int tex = cameraTexture[0];
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex);
-            if (textureSize > -1) {
-                if (!initialized) {
-                    GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGB, textureSize,
-                            textureSize, 0, GLES20.GL_RGB, GLES20.GL_UNSIGNED_BYTE ,
-                            null);
-                    initialized = true;
-                }
-                GLES20.glTexSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, previewFrameWidth, previewFrameHeight,
-                        GLES20.GL_RGB, GLES20.GL_UNSIGNED_BYTE, buffer);
-                GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
-            }
-        }
-    }
-    boolean initialized = false;
-
-    boolean dirty = false;
-    ByteBuffer buffer = ByteBuffer.wrap(glCameraFrame);
-    /**
-     * This method is called if a new image from the camera arrived. The camera
-     * delivers images in a yuv color format. It is converted to a black and
-     * white image with a size of 256x256 pixels (only a fraction of the
-     * resulting image is used). Afterwards Rendering the frame (in the main
-     * loop thread) is started by setting the newFrameLock to true.
-     */
-    public void onPreviewFrame(byte[] yuvs, Camera camera) {
-        if (textureSize == -1) {
-            textureSize = camLayer.textureSize;
-            previewFrameHeight = camLayer.previewFrameHeight;
-            previewFrameWidth = camLayer.previewFrameWidth;
-            glCameraFrame = new byte[previewFrameHeight * previewFrameWidth * 3];
-            texRatioHeight = 1.0f - (1.0f *previewFrameHeight) / (1.0f * textureSize);
-            texRatioWidth = (1.0f * previewFrameWidth) / (1.0f * textureSize);
-            setTextureRatio(texRatioWidth, texRatioHeight);
-            buffer = ByteBuffer.wrap(glCameraFrame);
-        }
-        yuv420sp2rgb(yuvs, previewFrameWidth, previewFrameHeight, textureSize, glCameraFrame);
     }
     
     public void setTextureRatio(float width, float height) {
@@ -288,6 +220,9 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
             -1.0f, 1.0f,  0, 1.0f, 0.0f,// 20 21 22 23 24
             1.0f, 1.0f,  0, 1.0f, 1.0f,// 25 26 27 28 29
     };
+    // Indices of the widths and heights to update in the vertex data buffer in order to set
+    // the texture bounds since we need to use a power of two texture, but have non-power-of-two
+    // images.
     private int[] mTriangleHeights = {4 ,19, 24};
     private int[] mTriangleWidths = {13, 23, 28};
 
@@ -393,7 +328,5 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
     private int maPositionHandle;
     private int maTextureHandle;
 
-    private Context mContext;
     private static String TAG = "Photo Funhouse";
-
 }
