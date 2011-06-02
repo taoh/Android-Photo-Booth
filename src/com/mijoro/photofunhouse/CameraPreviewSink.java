@@ -18,12 +18,15 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
 
     byte[] cameraBytes = new byte[0]; // size of a texture must be a
                                                 // power of 2
+    byte[] otherCameraBytes = new byte[0];
+    boolean useOtherBuffer = false;
     
     Size mPreviewSize;
     TextureRatio mTextureRatio;
     public int textureSize = -1;
     
-    ByteBuffer buffer = ByteBuffer.wrap(cameraBytes);
+    ByteBuffer buffer;
+    ByteBuffer otherBuffer;
 
     public class TextureRatio {
         public float width, height;
@@ -43,6 +46,13 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
         mCamera.setParameters(p);
         mCamera.startPreview();
         mCamera.setPreviewCallback(this);
+        
+        cameraBytes = new byte[mPreviewSize.width * mPreviewSize.height * 3];
+        otherCameraBytes = new byte[mPreviewSize.width * mPreviewSize.height * 3];
+        buffer = ByteBuffer.wrap(cameraBytes);
+        otherBuffer = ByteBuffer.wrap(otherCameraBytes);
+        
+        mCamera.addCallbackBuffer(cameraBytes);
     }
 
     public TextureRatio getTextureRatio() {
@@ -50,11 +60,11 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
     }
 
     public void onPreviewFrame(byte[] yuvs, Camera camera) {
-        if (cameraBytes.length == 0) {
-            cameraBytes = new byte[mPreviewSize.width * mPreviewSize.height * 3];
-            buffer = ByteBuffer.wrap(cameraBytes);
-        }
-        GLLayer.decode(yuvs, mPreviewSize.width, mPreviewSize.height, textureSize, cameraBytes);
+        byte[] bytes = useOtherBuffer ? otherCameraBytes : cameraBytes;
+        byte[] otherBytes = useOtherBuffer ? cameraBytes : otherCameraBytes;
+        GLLayer.decode(yuvs, mPreviewSize.width, mPreviewSize.height, textureSize, bytes);
+        mCamera.addCallbackBuffer(otherBytes);
+        useOtherBuffer = !useOtherBuffer;
     }
     
     public void bindTexture() {
@@ -73,7 +83,7 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
                     initialized = true;
                 }
                 GLES20.glTexSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, mPreviewSize.width, mPreviewSize.height,
-                        GLES20.GL_RGB, GLES20.GL_UNSIGNED_BYTE, buffer);
+                        GLES20.GL_RGB, GLES20.GL_UNSIGNED_BYTE, useOtherBuffer ? buffer : otherBuffer);
                 GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
             }
         }
