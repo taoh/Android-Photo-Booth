@@ -1,9 +1,11 @@
 
 package com.mijoro.photofunhouse;
 
+import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -11,6 +13,8 @@ import javax.microedition.khronos.opengles.GL10;
 import com.mijoro.photofunhouse.CameraPreviewSink.TextureRatio;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
@@ -22,6 +26,8 @@ public class GLLayer extends GLSurfaceView implements Renderer {
 
     private CameraPreviewSink sink;
     private TextureRatio mTexRatio;
+    private int mWidth, mHeight;
+    boolean mSaveNextFrame = false;
     
     static {
         System.loadLibrary("yuv420sp2rgb");
@@ -44,7 +50,6 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         layer.yuv420sp2rgb(in, width, height, textureSize, out);
     }
 
-
     public GLLayer(Context c) {
         super(c);
         layer = this;
@@ -56,14 +61,47 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         
         setOnClickListener(new OnClickListener() {
             public void onClick(View v) {
-                ++mProgramCounter;
-                if (mProgramCounter >= mPrograms.length) mProgramCounter = 0;
-                mProgram = mPrograms[mProgramCounter];
+                mSaveNextFrame = true;
             }
         });
         sink = new CameraPreviewSink();
         mTexRatio = sink.getTextureRatio();
         setTextureRatio(mTexRatio.width, mTexRatio.height);
+    }
+    
+    public void nextProgram() {
+        ++mProgramCounter;
+        if (mProgramCounter >= mPrograms.length) mProgramCounter = 0;
+        mProgram = mPrograms[mProgramCounter];  
+    }
+
+    public void saveImage() {
+        int w = mWidth;
+        int h = mHeight;
+        int b[]=new int[w*h];
+        int bt[]=new int[w*h];
+        IntBuffer ib=IntBuffer.wrap(b);
+        ib.position(0);
+        GLES20.glReadPixels(0, 0, w, h, GL10.GL_RGBA, GL10.GL_UNSIGNED_BYTE, ib);
+        //remember, that OpenGL bitmap is incompatible with Android bitmap
+        //and so, some correction need
+        for(int i=0; i<h; i++) {    
+             for(int j=0; j<w; j++)
+             {
+                  int pix=b[i*w+j];
+                  int pb=(pix>>16)&0xff;
+                  int pr=(pix<<16)&0x00ff0000;
+                  int pix1=(pix&0xff00ff00) | pr | pb;
+                  bt[(h-i-1)*w+j]=pix1;
+             }
+        }                  
+        Bitmap sb = Bitmap.createBitmap(bt, w, h, Bitmap.Config.ARGB_8888);
+        try {
+            FileOutputStream out = new FileOutputStream("/sdcard/1.png");
+            sb.compress(Bitmap.CompressFormat.PNG, 90, out);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
     
     public void onDrawFrame(GL10 gl) {
@@ -95,9 +133,16 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, mMVPMatrix, 0);
         GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6);
         checkGlError("glDrawArrays");
+        
+        if (mSaveNextFrame) {
+            saveImage();
+            mSaveNextFrame = false;
+        }
     }
 
     public void onSurfaceChanged(GL10 gl, int width, int height) {
+        mWidth = width;
+        mHeight = height;
         GLES20.glViewport(0, 0, width, height);
     }
 

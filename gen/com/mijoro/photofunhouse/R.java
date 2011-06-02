@@ -10,7 +10,14 @@ package com.mijoro.photofunhouse;
 public final class R {
     public static final class attr {
     }
+    public static final class id {
+        public static final int next_filter=0x7f040000;
+    }
+    public static final class menu {
+        public static final int menu=0x7f030000;
+    }
     public static final class string {
         public static final int app_name=0x7f020000;
+        public static final int next_filter=0x7f020001;
     }
 }
