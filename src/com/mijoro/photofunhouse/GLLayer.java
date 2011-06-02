@@ -100,8 +100,9 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
         GLES20.glUniform2f(muSizeHandle, texRatioWidth, texRatioHeight);
         
         Matrix.setRotateM(mMMatrix, 0, 0, 0, 0, 1.0f);
-       // Matrix.scaleM(mMMatrix, 0, 1.9f, 1.0f, 1.0f);
-        Matrix.translateM(mMMatrix, 0, 0f, -.5f, 0);
+        Matrix.translateM(mMMatrix, 0, -1.3f, -1.3f, 0);
+        Matrix.scaleM(mMMatrix, 0, 2.8f, 2.8f, 1.0f);
+        
         Matrix.multiplyMM(mMVPMatrix, 0, mVMatrix, 0, mMMatrix, 0);
         Matrix.multiplyMM(mMVPMatrix, 0, mProjMatrix, 0, mMVPMatrix, 0);
 
@@ -138,8 +139,6 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
             throw new RuntimeException("Could not get uniform location for uMVPMatrix");
         }
         muSizeHandle = GLES20.glGetUniformLocation(mProgram, "uSize");
-        System.out.println("SIZE HANDLE " + muSizeHandle);
-        System.out.println("Checking for size handle");
         checkGlError("glGetUniformLocation uSize");
         if (muSizeHandle == -1) {
             throw new RuntimeException("Could not get uniform location for uSize");
