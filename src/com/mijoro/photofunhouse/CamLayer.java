@@ -41,7 +41,7 @@ public class CamLayer extends SurfaceView implements SurfaceHolder.Callback, Pre
     }
 
 
-    CamLayer(GLCamTest context, Camera.PreviewCallback callback) {
+    CamLayer(FunhouseActivity context, Camera.PreviewCallback callback) {
         super(context);
         this.callback=callback;
         

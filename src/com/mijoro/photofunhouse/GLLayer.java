@@ -33,6 +33,8 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
 
     byte[] glCameraFrame = new byte[512 * 512]; // size of a texture must be a
                                                 // power of 2
+    
+    int[] mPrograms = new int[3];
 
     public int previewFrameWidth = 0;
     public int previewFrameHeight = 0;
@@ -99,13 +101,6 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
         
         GLES20.glUniform2f(muSizeHandle, texRatioWidth, texRatioHeight);
         
-        Matrix.setRotateM(mMMatrix, 0, 0, 0, 0, 1.0f);
-        Matrix.translateM(mMMatrix, 0, -1.3f, -1.3f, 0);
-        Matrix.scaleM(mMMatrix, 0, 2.8f, 2.8f, 1.0f);
-        
-        Matrix.multiplyMM(mMVPMatrix, 0, mVMatrix, 0, mMMatrix, 0);
-        Matrix.multiplyMM(mMVPMatrix, 0, mProjMatrix, 0, mMVPMatrix, 0);
-
         GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, mMVPMatrix, 0);
         GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6);
         checkGlError("glDrawArrays");
@@ -114,11 +109,11 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
     public void onSurfaceChanged(GL10 gl, int width, int height) {
         GLES20.glViewport(0, 0, width, height);
         float ratio = 1.0f;
-        Matrix.frustumM(mProjMatrix, 0, -ratio, ratio, -1, 1, 3, 7);
+      //  Matrix.frustumM(mProjMatrix, 0, -ratio, ratio, -1, 1, 3, 7);
     }
 
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-        mProgram = createProgram(mVertexShader, mFragmentShaderMirror);
+        mProgram = createProgram(mVertexShader, mFragmentShaderPinch);
         if (mProgram == 0) {
             return;
         }
@@ -144,7 +139,7 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
             throw new RuntimeException("Could not get uniform location for uSize");
         }
         
-        Matrix.setLookAtM(mVMatrix, 0, 0, 0, -5, 0f, 0f, 0f, 0f, 1.0f, 0.0f);
+        Matrix.setIdentityM(mMVPMatrix, 0);
     }
     float texRatioHeight = 1.0f;
     float texRatioWidth = 1.0f;
@@ -277,12 +272,12 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
     private static final int TRIANGLE_VERTICES_DATA_UV_OFFSET = 3;
     private final float[] mTriangleVerticesData = {
             // X,   Y,   Z,  U,    V
-            0.0f, 0.0f, 0, 0.0f, 0.0f,// 0  1  2  3  4
-            1.0f, 0.0f, 0, 0.0f, 1.0f,// 5  6  7  8  9
+            -1.0f, -1.0f, 0, 0.0f, 0.0f,// 0  1  2  3  4
+            1.0f, -1.0f, 0, 0.0f, 1.0f,// 5  6  7  8  9
             1.0f, 1.0f, 0, 1.0f, 1.0f,// 10 11 12 13 14
 
-            0.0f, 0.0f, 0,  0.0f, 0.0f,// 15 16 17 18 19
-            0.0f, 1.0f,  0, 1.0f, 0.0f,// 20 21 22 23 24
+            -1.0f, -1.0f, 0,  0.0f, 0.0f,// 15 16 17 18 19
+            -1.0f, 1.0f,  0, 1.0f, 0.0f,// 20 21 22 23 24
             1.0f, 1.0f,  0, 1.0f, 1.0f,// 25 26 27 28 29
     };
     private int[] mTriangleHeights = {4 ,19, 24};
@@ -293,10 +288,10 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
     private final String NORMALIZATION_FUNCTIONS =
         "uniform vec2 uSize;\n\n" + // The size of the top left corner of the actual image in the texture.  Dimensions should be normalized between 0 and these values.
         "vec2 norm(vec2 inSize) {\n" +
-        "  return inSize * uSize;\n" +
+        "  return inSize / uSize;\n" +
         "}\n" +
         "vec2 denorm(vec2 inSize) {\n" +
-        "  return inSize / uSize;\n" +
+        "  return inSize * uSize;\n" +
         "}\n";
 
     private final String mVertexShader =
@@ -336,13 +331,27 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
         NORMALIZATION_FUNCTIONS +
         "void main() {\n" +
         "  vec2 normalized = norm(vTextureCoord);\n" +
+        "  if (normalized.x > 0.5) {normalized.x = 1.0 - normalized.x;}\n" +
         "  gl_FragColor = texture2D(sTexture, denorm(normalized));\n" +
         "}\n";
 
+    private final String mFragmentShaderPinch =
+        "precision mediump float;\n" +
+        "varying vec2 vTextureCoord;\n" +
+        "uniform sampler2D sTexture;\n" +
+        NORMALIZATION_FUNCTIONS +
+        "void main() {\n" +
+        "  vec2 normalized = norm(vTextureCoord);\n" +
+        "  vec2 normCoord = vec2(2.0) * normalized - vec2(1.0);\n" +
+        "  float r = length(normCoord);\n" +
+        "  float phi = atan(normCoord.y, normCoord.x);\n" +
+        "  r = pow(r, 1.0/ (1.0 - 1.0 * -1.0)) * 0.8;\n" + 
+        "  normCoord.x = r* cos(phi);\n" + 
+        "  normCoord.y = r* sin(phi);\n" +
+        "  vec2 texCoord = (normCoord / 2.0 + 0.5);\n" +
+        "  gl_FragColor = texture2D(sTexture, denorm(texCoord));\n" +
+        "}\n";
     private float[] mMVPMatrix = new float[16];
-    private float[] mProjMatrix = new float[16];
-    private float[] mMMatrix = new float[16];
-    private float[] mVMatrix = new float[16];
 
     private int mProgram;
     private int mTextureID;
@@ -352,6 +361,6 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
     private int maTextureHandle;
 
     private Context mContext;
-    private static String TAG = "GLES20TriangleRenderer";
+    private static String TAG = "Photo Funhouse";
 
 }
