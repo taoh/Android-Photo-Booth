@@ -380,9 +380,9 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     private int[] mPrograms;
     private int mProgramCounter = 0;
     private String[] mShaders = {
+            mFragmentShaderPinch,
             mFragmentShaderDuotone,
             mFragmentShaderInvert,
-            mFragmentShaderPinch,
             mFragmentShaderMirror,
             mFragmentShaderBulge
     };

@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.Window;
 
 public class FunhouseActivity extends Activity {
 	private GLLayer glView;
@@ -12,6 +13,7 @@ public class FunhouseActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         glView = new GLLayer(this);
+        getWindow().requestFeature(Window.FEATURE_NO_TITLE);
         setContentView(glView);
     }
     
