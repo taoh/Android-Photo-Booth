@@ -19,6 +19,7 @@ import android.opengl.GLSurfaceView.Renderer;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.SurfaceHolder;
+import android.view.View;
 
 /**
  * This class uses OpenGL ES to render the camera's viewfinder image on the
@@ -34,8 +35,6 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
     byte[] glCameraFrame = new byte[512 * 512]; // size of a texture must be a
                                                 // power of 2
     
-    int[] mPrograms = new int[3];
-
     public int previewFrameWidth = 0;
     public int previewFrameHeight = 0;
     public int textureSize = -1;
@@ -69,6 +68,15 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
         mTriangleVertices = ByteBuffer.allocateDirect(mTriangleVerticesData.length
                 * FLOAT_SIZE_BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
         mTriangleVertices.put(mTriangleVerticesData).position(0);
+        
+        setOnClickListener(new OnClickListener() {
+            
+            public void onClick(View v) {
+                ++mProgramCounter;
+                if (mProgramCounter >= mPrograms.length) mProgramCounter = 0;
+                mProgram = mPrograms[mProgramCounter];
+            }
+        });
     }
     
     public void setCamLayer(CamLayer c) {
@@ -108,15 +116,15 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
 
     public void onSurfaceChanged(GL10 gl, int width, int height) {
         GLES20.glViewport(0, 0, width, height);
-        float ratio = 1.0f;
-      //  Matrix.frustumM(mProjMatrix, 0, -ratio, ratio, -1, 1, 3, 7);
     }
 
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-        mProgram = createProgram(mVertexShader, mFragmentShaderPinch);
-        if (mProgram == 0) {
-            return;
+        mPrograms = new int[mShaders.length];
+        int i = 0;
+        for (String fshader : mShaders) {
+            mPrograms[i++] = createProgram(mVertexShader, fshader);
         }
+        mProgram = mPrograms[0];
         maPositionHandle = GLES20.glGetAttribLocation(mProgram, "aPosition");
         checkGlError("glGetAttribLocation aPosition");
         if (maPositionHandle == -1) {
@@ -285,7 +293,10 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
 
     private FloatBuffer mTriangleVertices;
     
-    private final String NORMALIZATION_FUNCTIONS =
+    private final String PROGRAM_HEADER =
+        "precision mediump float;\n" +
+        "varying vec2 vTextureCoord;\n" +
+        "uniform sampler2D sTexture;\n" +
         "uniform vec2 uSize;\n\n" + // The size of the top left corner of the actual image in the texture.  Dimensions should be normalized between 0 and these values.
         "vec2 norm(vec2 inSize) {\n" +
         "  return inSize / uSize;\n" +
@@ -304,31 +315,49 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
         "  vTextureCoord = vec2(aTextureCoord.x, 1.0-aTextureCoord.y);\n" +
         "}\n";
 
-    private final String mFragmentShaderBulge =
-        "precision mediump float;\n" +
-        "varying vec2 vTextureCoord;\n" +
-        "uniform sampler2D sTexture;\n" +
-        "void main() {\n" +
-        "  vec2 cen = vec2(0.5,0.5) - vTextureCoord.xy;\n" +
-        "  vec2 mcen =  0.07*log(length(cen))*normalize(cen);\n" +
-        "  gl_FragColor = texture2D(sTexture, vTextureCoord.xy+mcen);\n" +
-        "}\n";
-    private final String mFragmentShader =
-        "precision mediump float;\n" +
-        "varying vec2 vTextureCoord;\n" +
-        "uniform sampler2D sTexture;\n" +
-        NORMALIZATION_FUNCTIONS +
+    private final String mFragmentShaderCreepy =
+        PROGRAM_HEADER +
         "void main() {\n" +
         "  vec2 normalized = norm(vTextureCoord);\n" +
-        "  normalized.x = 1.0 - normalized.x;\n" +
+        "  vec2 cen = vec2(0.5,0.5) - normalized;\n" +
+        "  vec2 mcen =  0.07*log(length(cen))*normalize(cen);\n" +
+        "  gl_FragColor = texture2D(sTexture, denorm(normalized+mcen));\n" +
+        "}\n";
+    private final String mFragmentShaderBulge =
+        PROGRAM_HEADER +
+        "void main() {\n" +
+        "  vec2 normalized = norm(vTextureCoord);\n" +
+        "  vec2 normCoord = vec2(2.0) * normalized - vec2(1.0);\n" +
+        "  float r = length(normCoord);\n" +
+        "  float phi = atan(normCoord.y, normCoord.x);\n" +
+        "  r = pow(r, 1.4) * 0.8;\n" + 
+        "  normCoord.x = r* cos(phi);\n" + 
+        "  normCoord.y = r* sin(phi);\n" +
+        "  vec2 texCoord = (normCoord / 2.0 + 0.5);\n" +
+        "  gl_FragColor = texture2D(sTexture, denorm(texCoord));\n" +
+        "}\n";
+    
+   
+    private final String mFragmentShaderDuotone =
+        PROGRAM_HEADER +
+        "void main() {\n" +
+        "  vec2 normalized = norm(vTextureCoord);\n" +
+        "  vec4 color = texture2D(sTexture, vTextureCoord);\n" +
+        "  vec4 result = vec4(color.r + color.g + color.b / 3.0);\n" +
+        "  result = (result.r < 0.2 ) ? vec4(0.0) : vec4(1.0, 0.0, 0.0, 1.0);\n" +
+        "  result.a = color.a;\n" +
+        "  gl_FragColor = result;\n" +
+        "}\n";   
+    
+    private final String mFragmentShaderNormal =
+        PROGRAM_HEADER +
+        "void main() {\n" +
+        "  vec2 normalized = norm(vTextureCoord);\n" +
         "  gl_FragColor = texture2D(sTexture, denorm(normalized));\n" +
         "}\n";
     
     private final String mFragmentShaderMirror =
-        "precision mediump float;\n" +
-        "varying vec2 vTextureCoord;\n" +
-        "uniform sampler2D sTexture;\n" +
-        NORMALIZATION_FUNCTIONS +
+        PROGRAM_HEADER +
         "void main() {\n" +
         "  vec2 normalized = norm(vTextureCoord);\n" +
         "  if (normalized.x > 0.5) {normalized.x = 1.0 - normalized.x;}\n" +
@@ -336,10 +365,7 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
         "}\n";
 
     private final String mFragmentShaderPinch =
-        "precision mediump float;\n" +
-        "varying vec2 vTextureCoord;\n" +
-        "uniform sampler2D sTexture;\n" +
-        NORMALIZATION_FUNCTIONS +
+        PROGRAM_HEADER +
         "void main() {\n" +
         "  vec2 normalized = norm(vTextureCoord);\n" +
         "  vec2 normCoord = vec2(2.0) * normalized - vec2(1.0);\n" +
@@ -354,7 +380,14 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
     private float[] mMVPMatrix = new float[16];
 
     private int mProgram;
-    private int mTextureID;
+    private int[] mPrograms;
+    private int mProgramCounter = 0;
+    private String[] mShaders = {
+            mFragmentShaderDuotone,
+            mFragmentShaderPinch,
+            mFragmentShaderMirror,
+            mFragmentShaderBulge
+    };
     private int muMVPMatrixHandle;
     private int muSizeHandle;
     private int maPositionHandle;
