@@ -105,8 +105,6 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     }
     
     public void onDrawFrame(GL10 gl) {
-     // Ignore the passed-in GL10 interface, and use the GLES20
-        // class's static methods instead.
         GLES20.glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
         GLES20.glClear( GLES20.GL_DEPTH_BUFFER_BIT | GLES20.GL_COLOR_BUFFER_BIT);
         GLES20.glUseProgram(mProgram);
