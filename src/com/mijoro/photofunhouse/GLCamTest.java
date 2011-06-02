@@ -24,14 +24,6 @@ public class GLCamTest extends Activity {
     public void onResume() {
         super.onResume();
         
-        this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-        
-        final Window win = getWindow(); 
-        win.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        
-        // Hide the window title.
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
-        
         glView=new GLLayer(this);
         
 		mPreview = new CamLayer(this, glView);

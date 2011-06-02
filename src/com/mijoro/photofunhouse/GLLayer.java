@@ -96,10 +96,12 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
         checkGlError("glVertexAttribPointer maTextureHandle");
         GLES20.glEnableVertexAttribArray(maTextureHandle);
         checkGlError("glEnableVertexAttribArray maTextureHandle");
-
-        Matrix.setRotateM(mMMatrix, 0, 90, 0, 0, 1.0f);
-//        Matrix.scaleM(mMMatrix, 0, 2, 2, 2);
-//        Matrix.translateM(mMMatrix, 0, .25f, -.35f, 0);
+        
+        GLES20.glUniform2f(muSizeHandle, texRatioWidth, texRatioHeight);
+        
+        Matrix.setRotateM(mMMatrix, 0, 0, 0, 0, 1.0f);
+       // Matrix.scaleM(mMMatrix, 0, 1.9f, 1.0f, 1.0f);
+        Matrix.translateM(mMMatrix, 0, 0f, -.5f, 0);
         Matrix.multiplyMM(mMVPMatrix, 0, mVMatrix, 0, mMMatrix, 0);
         Matrix.multiplyMM(mMVPMatrix, 0, mProjMatrix, 0, mMVPMatrix, 0);
 
@@ -110,12 +112,12 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
 
     public void onSurfaceChanged(GL10 gl, int width, int height) {
         GLES20.glViewport(0, 0, width, height);
-        float ratio = (float) width / height;
+        float ratio = 1.0f;
         Matrix.frustumM(mProjMatrix, 0, -ratio, ratio, -1, 1, 3, 7);
     }
 
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-        mProgram = createProgram(mVertexShader, mFragmentShader);
+        mProgram = createProgram(mVertexShader, mFragmentShaderMirror);
         if (mProgram == 0) {
             return;
         }
@@ -133,9 +135,16 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
         muMVPMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uMVPMatrix");
         checkGlError("glGetUniformLocation uMVPMatrix");
         if (muMVPMatrixHandle == -1) {
-            throw new RuntimeException("Could not get attrib location for uMVPMatrix");
+            throw new RuntimeException("Could not get uniform location for uMVPMatrix");
         }
-
+        muSizeHandle = GLES20.glGetUniformLocation(mProgram, "uSize");
+        System.out.println("SIZE HANDLE " + muSizeHandle);
+        System.out.println("Checking for size handle");
+        checkGlError("glGetUniformLocation uSize");
+        if (muSizeHandle == -1) {
+            throw new RuntimeException("Could not get uniform location for uSize");
+        }
+        
         Matrix.setLookAtM(mVMatrix, 0, 0, 0, -5, 0f, 0f, 0f, 0f, 1.0f, 0.0f);
     }
     float texRatioHeight = 1.0f;
@@ -191,14 +200,12 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
     }
     
     public void setTextureRatio(float width, float height) {
-        System.out.println("New attribs " +width +"/" + height);
-        mTriangleVertices.put(8, width);
-        mTriangleVertices.put(13, width);
-        mTriangleVertices.put(28, width);
-        
-        mTriangleVertices.put(4, height);
-        mTriangleVertices.put(9, height);
-        mTriangleVertices.put(19, height);        
+        for (int index : mTriangleHeights) {
+            mTriangleVertices.put(index, height);
+        }
+        for (int index : mTriangleWidths) {
+            mTriangleVertices.put(index, width);
+        }
     }
 
     FloatBuffer makeFloatBuffer(float[] arr) {
@@ -270,18 +277,28 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
     private static final int TRIANGLE_VERTICES_DATA_POS_OFFSET = 0;
     private static final int TRIANGLE_VERTICES_DATA_UV_OFFSET = 3;
     private final float[] mTriangleVerticesData = {
-            // X,    Y,   Z,  U,    V
-            -1.0f, -1.0f, 0, 0.0f, 0.0f,// 0  1  2  3  4
-            1.0f,  -1.0f, 0, 1.0f, 0.0f,// 5  6  7  8  9
-            1.0f,   1.0f, 0, 1.0f, 1.0f,// 10 11 12 13 14
+            // X,   Y,   Z,  U,    V
+            0.0f, 0.0f, 0, 0.0f, 0.0f,// 0  1  2  3  4
+            1.0f, 0.0f, 0, 0.0f, 1.0f,// 5  6  7  8  9
+            1.0f, 1.0f, 0, 1.0f, 1.0f,// 10 11 12 13 14
 
-            -1.0f, -1.0f, 0, 0.0f, 0.0f,// 15 16 17 18 19
-            -1.0f, 1.0f,  0, 0.0f, 1.0f,// 20 21 22 23 24
-            1.0f,  1.0f,  0, 1.0f, 1.0f,// 25 26 27 28 29
-            
+            0.0f, 0.0f, 0,  0.0f, 0.0f,// 15 16 17 18 19
+            0.0f, 1.0f,  0, 1.0f, 0.0f,// 20 21 22 23 24
+            1.0f, 1.0f,  0, 1.0f, 1.0f,// 25 26 27 28 29
     };
+    private int[] mTriangleHeights = {4 ,19, 24};
+    private int[] mTriangleWidths = {13, 23, 28};
 
     private FloatBuffer mTriangleVertices;
+    
+    private final String NORMALIZATION_FUNCTIONS =
+        "uniform vec2 uSize;\n\n" + // The size of the top left corner of the actual image in the texture.  Dimensions should be normalized between 0 and these values.
+        "vec2 norm(vec2 inSize) {\n" +
+        "  return inSize * uSize;\n" +
+        "}\n" +
+        "vec2 denorm(vec2 inSize) {\n" +
+        "  return inSize / uSize;\n" +
+        "}\n";
 
     private final String mVertexShader =
         "uniform mat4 uMVPMatrix;\n" +
@@ -306,8 +323,21 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
         "precision mediump float;\n" +
         "varying vec2 vTextureCoord;\n" +
         "uniform sampler2D sTexture;\n" +
+        NORMALIZATION_FUNCTIONS +
         "void main() {\n" +
-        "  gl_FragColor = texture2D(sTexture, vTextureCoord.xy);\n" +
+        "  vec2 normalized = norm(vTextureCoord);\n" +
+        "  normalized.x = 1.0 - normalized.x;\n" +
+        "  gl_FragColor = texture2D(sTexture, denorm(normalized));\n" +
+        "}\n";
+    
+    private final String mFragmentShaderMirror =
+        "precision mediump float;\n" +
+        "varying vec2 vTextureCoord;\n" +
+        "uniform sampler2D sTexture;\n" +
+        NORMALIZATION_FUNCTIONS +
+        "void main() {\n" +
+        "  vec2 normalized = norm(vTextureCoord);\n" +
+        "  gl_FragColor = texture2D(sTexture, denorm(normalized));\n" +
         "}\n";
 
     private float[] mMVPMatrix = new float[16];
@@ -318,6 +348,7 @@ public class GLLayer extends GLSurfaceView implements SurfaceHolder.Callback,
     private int mProgram;
     private int mTextureID;
     private int muMVPMatrixHandle;
+    private int muSizeHandle;
     private int maPositionHandle;
     private int maTextureHandle;
 
