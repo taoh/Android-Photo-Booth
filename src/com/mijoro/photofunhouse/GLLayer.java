@@ -69,6 +69,18 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         setTextureRatio(mTexRatio.width, mTexRatio.height);
     }
     
+    @Override
+    public void onPause() {
+        sink.onPause();
+        super.onPause();
+    }
+    
+    @Override
+    public void onResume() {
+        sink.onResume();
+        super.onResume();
+    }
+    
     public void nextProgram() {
         ++mProgramCounter;
         if (mProgramCounter >= mPrograms.length) mProgramCounter = 0;

@@ -34,6 +34,10 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
     }
     
     public CameraPreviewSink() {
+        initCamera();
+    }
+    
+    private void initCamera() {
         mCamera = Camera.open(CameraInfo.CAMERA_FACING_FRONT);
         Camera.Parameters p = mCamera.getParameters();
         p.setPreviewFormat(ImageFormat.NV21);
@@ -82,6 +86,14 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
                 GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
             }
         }
+    }
+    
+    public void onPause() {
+        mCamera.stopPreview();
+        mCamera.release();
+    }
+    
+    public void onResume() {
     }
 
 }

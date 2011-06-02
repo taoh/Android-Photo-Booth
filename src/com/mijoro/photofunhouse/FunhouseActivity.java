@@ -30,4 +30,16 @@ public class FunhouseActivity extends Activity {
         }
         return super.onOptionsItemSelected(item);
     }
+    
+    @Override
+    protected void onPause() {
+        glView.onPause();
+        super.onPause();
+    }
+    
+    @Override
+    protected void onResume() {
+        glView.onResume();
+        super.onResume();
+    }
 }
