@@ -3,7 +3,7 @@ package com.mijoro.photofunhouse;
 
 import java.nio.ByteBuffer;
 
-import android.graphics.PixelFormat;
+import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
 import android.hardware.Camera.Size;
@@ -16,17 +16,14 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
     boolean initialized = false;
     int[] cameraTexture;
 
-    byte[] cameraBytes = new byte[0]; // size of a texture must be a
-                                                // power of 2
-    byte[] otherCameraBytes = new byte[0];
-    boolean useOtherBuffer = false;
+    byte[] cameraBytes = new byte[0];
+    byte[] rgbBytes = new byte[0];
     
     Size mPreviewSize;
     TextureRatio mTextureRatio;
     public int textureSize = -1;
     
-    ByteBuffer buffer;
-    ByteBuffer otherBuffer;
+    ByteBuffer rgbBuffer;
 
     public class TextureRatio {
         public float width, height;
@@ -39,22 +36,21 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
     public CameraPreviewSink() {
         mCamera = Camera.open(CameraInfo.CAMERA_FACING_FRONT);
         Camera.Parameters p = mCamera.getParameters();
-        p.setPreviewFormat(PixelFormat.YCbCr_420_SP);
+        p.setPreviewFormat(ImageFormat.NV21);
         Size lowestSetting = p.getSupportedPreviewSizes().get(1);
         p.setPreviewSize(lowestSetting.width, lowestSetting.height);
         mPreviewSize = lowestSetting;
         textureSize = Utilities.nextPowerOfTwo(Math.max(mPreviewSize.width, mPreviewSize.height));
         mTextureRatio = new TextureRatio(((float)mPreviewSize.width) / (float)textureSize, (float)mPreviewSize.height / (float)textureSize);
         mCamera.setParameters(p);
-        mCamera.startPreview();
-        mCamera.setPreviewCallback(this);
-        
-        cameraBytes = new byte[mPreviewSize.width * mPreviewSize.height * 3];
-        otherCameraBytes = new byte[mPreviewSize.width * mPreviewSize.height * 3];
-        buffer = ByteBuffer.wrap(cameraBytes);
-        otherBuffer = ByteBuffer.wrap(otherCameraBytes);
+        int bytelen = (int)(mPreviewSize.width * mPreviewSize.height * ImageFormat.getBitsPerPixel(ImageFormat.NV21) / 8.0f);
+        cameraBytes = new byte[bytelen];
+        rgbBytes = new byte[mPreviewSize.width * mPreviewSize.height * 3];
+        rgbBuffer = ByteBuffer.wrap(rgbBytes);
         
         mCamera.addCallbackBuffer(cameraBytes);
+        mCamera.startPreview();
+        mCamera.setPreviewCallbackWithBuffer(this);
     }
 
     public TextureRatio getTextureRatio() {
@@ -62,11 +58,8 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
     }
 
     public void onPreviewFrame(byte[] yuvs, Camera camera) {
-        byte[] bytes = useOtherBuffer ? otherCameraBytes : cameraBytes;
-        byte[] otherBytes = useOtherBuffer ? cameraBytes : otherCameraBytes;
-        GLLayer.decode(yuvs, mPreviewSize.width, mPreviewSize.height, textureSize, bytes);
-        mCamera.addCallbackBuffer(otherBytes);
-        useOtherBuffer = !useOtherBuffer;
+        GLLayer.decode(yuvs, mPreviewSize.width, mPreviewSize.height, textureSize, rgbBytes);
+        mCamera.addCallbackBuffer(yuvs);
     }
     
     public void bindTexture() {
@@ -85,7 +78,7 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
                     initialized = true;
                 }
                 GLES20.glTexSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, mPreviewSize.width, mPreviewSize.height,
-                        GLES20.GL_RGB, GLES20.GL_UNSIGNED_BYTE, useOtherBuffer ? buffer : otherBuffer);
+                        GLES20.GL_RGB, GLES20.GL_UNSIGNED_BYTE, rgbBuffer);
                 GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
             }
         }

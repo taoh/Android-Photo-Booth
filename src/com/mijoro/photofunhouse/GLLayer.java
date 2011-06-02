@@ -82,7 +82,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         int bt[]=new int[w*h];
         IntBuffer ib=IntBuffer.wrap(b);
         ib.position(0);
-        GLES20.glReadPixels(0, 0, w, h, GL10.GL_RGBA, GL10.GL_UNSIGNED_BYTE, ib);
+        GLES20.glReadPixels(0, 0, w, h, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, ib);
         //remember, that OpenGL bitmap is incompatible with Android bitmap
         //and so, some correction need
         for(int i=0; i<h; i++) {    
@@ -334,6 +334,13 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         "  gl_FragColor = texture2D(sTexture, denorm(normalized));\n" +
         "}\n";
     
+    private final String mFragmentShaderInvert =
+        PROGRAM_HEADER +
+        "void main() {\n" +
+        "  vec2 normalized = norm(vTextureCoord);\n" +
+        "  gl_FragColor = vec4(1.0) - texture2D(sTexture, denorm(normalized));\n" +
+        "}\n";
+    
     private final String mFragmentShaderMirror =
         PROGRAM_HEADER +
         "void main() {\n" +
@@ -362,6 +369,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     private int mProgramCounter = 0;
     private String[] mShaders = {
             mFragmentShaderDuotone,
+            mFragmentShaderInvert,
             mFragmentShaderPinch,
             mFragmentShaderMirror,
             mFragmentShaderBulge
