@@ -20,14 +20,14 @@ import android.opengl.Matrix;
 import android.opengl.GLSurfaceView.Renderer;
 import android.util.AttributeSet;
 import android.util.Log;
-import android.view.View;
 
 public class GLLayer extends GLSurfaceView implements Renderer {
 
     private CameraPreviewSink sink;
     private TextureRatio mTexRatio;
     private int mWidth, mHeight;
-    boolean mSaveNextFrame = false;
+    private boolean mSaveNextFrame = false;
+    private boolean mOverviewMode = false;
     
     static {
         System.loadLibrary("yuv420sp2rgb");
@@ -79,6 +79,10 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         super.onResume();
     }
     
+    public void toggleOverview() {
+        mOverviewMode = !mOverviewMode;
+    }
+    
     public void nextProgram() {
         ++mProgramCounter;
         if (mProgramCounter >= mPrograms.length) mProgramCounter = 0;
@@ -123,12 +127,33 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         GLES20.glClear( GLES20.GL_DEPTH_BUFFER_BIT | GLES20.GL_COLOR_BUFFER_BIT);
         GLES20.glUseProgram(mProgram);
         checkGlError("glUseProgram");
-
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         sink.bindTexture();
-
-        drawQuad(mainQuadVertices, mMVPMatrix);
-
+        if (!mOverviewMode) {
+            Matrix.setIdentityM(mMVPMatrix, 0);
+            drawQuad(mainQuadVertices, mMVPMatrix);
+        } else {
+            Matrix.setIdentityM(mMVPMatrix, 0);
+            Matrix.scaleM(mMVPMatrix, 0, 0.333f, 0.333f, 1.0f);
+            Matrix.translateM(mMVPMatrix, 0, -2.0f, -2.0f, 0.0f);
+            GLES20.glUseProgram(mPrograms[0]);
+            drawQuad(mainQuadVertices, mMVPMatrix);
+            Matrix.translateM(mMVPMatrix, 0, 2.0f, 0.0f, 0.0f);
+            GLES20.glUseProgram(mPrograms[1]);
+            drawQuad(mainQuadVertices, mMVPMatrix);
+            Matrix.translateM(mMVPMatrix, 0, 2.0f, 0.0f, 0.0f);
+            GLES20.glUseProgram(mPrograms[2]);
+            drawQuad(mainQuadVertices, mMVPMatrix);
+            Matrix.translateM(mMVPMatrix, 0, -4.0f, 2.0f, 0.0f);
+            GLES20.glUseProgram(mPrograms[3]);
+            drawQuad(mainQuadVertices, mMVPMatrix);
+            Matrix.translateM(mMVPMatrix, 0, 2.0f, 0.0f, 0.0f);
+            GLES20.glUseProgram(mNormalProgram);
+            drawQuad(mainQuadVertices, mMVPMatrix);
+            Matrix.translateM(mMVPMatrix, 0, 2.0f, 0.0f, 0.0f);
+            GLES20.glUseProgram(mPrograms[4]);
+            drawQuad(mainQuadVertices, mMVPMatrix);
+        }
         
         if (mSaveNextFrame) {
             saveImage();
@@ -171,7 +196,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
             mPrograms[i++] = createProgram(mVertexShader, fshader);
         }
         mProgram = mPrograms[0];
-        mNextProgram = mPrograms[1];
+        mNormalProgram = createProgram(mVertexShader, mFragmentShaderNormal);
         maPositionHandle = GLES20.glGetAttribLocation(mProgram, "aPosition");
         checkGlError("glGetAttribLocation aPosition");
         if (maPositionHandle == -1) {
@@ -390,7 +415,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     private float[] mNextMVPMatrix = new float[16];
 
     private int mProgram;
-    private int mNextProgram;
+    private int mNormalProgram;
     private int[] mPrograms;
     private int mProgramCounter = 0;
     private String[] mShaders = {

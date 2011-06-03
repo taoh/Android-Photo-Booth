@@ -48,8 +48,7 @@ public class FunhouseActivity extends Activity {
         mToolbar.startAnimation(mHideAnimation);
         glView.setOnClickListener(new OnClickListener() {
             public void onClick(View v) {
-                mToolbar.startAnimation(mToolbarShown ? mHideAnimation : mShowAnimation);
-                mToolbarShown = !mToolbarShown;
+                glView.toggleOverview();
             }
         });
 
