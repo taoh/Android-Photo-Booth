@@ -78,7 +78,7 @@ public class FunhouseActivity extends Activity {
     
     @Override
     protected void onResume() {
-      //  glView.onResume();
+        glView.onResume();
         super.onResume();
     }
 }

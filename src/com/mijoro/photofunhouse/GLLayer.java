@@ -20,14 +20,20 @@ import android.opengl.Matrix;
 import android.opengl.GLSurfaceView.Renderer;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.MotionEvent;
+import android.view.View;
 
 public class GLLayer extends GLSurfaceView implements Renderer {
+    private static final float ANIMATION_DURATION = 600.0f;
 
     private CameraPreviewSink sink;
     private TextureRatio mTexRatio;
     private int mWidth, mHeight;
     private boolean mSaveNextFrame = false;
     private boolean mOverviewMode = false;
+    private float mTime = 0.0f;
+    
+    private long mAnimationStartTime = 0;
     
     static {
         System.loadLibrary("yuv420sp2rgb");
@@ -59,6 +65,24 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         mainQuadVertices = ByteBuffer.allocateDirect(mTriangleVerticesData.length
                 * FLOAT_SIZE_BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
         mainQuadVertices.put(mTriangleVerticesData).position(0);
+        setOnTouchListener(new OnTouchListener() {
+            public boolean onTouch(View v, MotionEvent event) {
+                if (mOverviewMode && event.getAction() == MotionEvent.ACTION_UP) {
+                    int xindex = (int) (3.0f * event.getX() / (float)getWidth());
+                    int yindex = (int) (3.0f * event.getY() / (float)getHeight());
+                    int index = 3 * yindex + xindex % 3;
+                    if (index >= mPrograms.length) return false;
+                    mProgramCounter = index;
+                    mProgram = mPrograms[mProgramCounter];
+                }
+                return false;
+            }
+        });
+        setOnClickListener(new OnClickListener() {
+            public void onClick(View v) {
+                
+            }
+        });
     }
     
     public void setCameraPreviewSink(CameraPreviewSink sink) {
@@ -80,6 +104,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     }
     
     public void toggleOverview() {
+        mAnimationStartTime = System.currentTimeMillis();
         mOverviewMode = !mOverviewMode;
     }
     
@@ -123,7 +148,8 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     }
     
     public void onDrawFrame(GL10 gl) {
-        GLES20.glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+        mTime += 0.01f;
+        GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         GLES20.glClear( GLES20.GL_DEPTH_BUFFER_BIT | GLES20.GL_COLOR_BUFFER_BIT);
         GLES20.glUseProgram(mProgram);
         checkGlError("glUseProgram");
@@ -133,26 +159,27 @@ public class GLLayer extends GLSurfaceView implements Renderer {
             Matrix.setIdentityM(mMVPMatrix, 0);
             drawQuad(mainQuadVertices, mMVPMatrix);
         } else {
-            Matrix.setIdentityM(mMVPMatrix, 0);
-            Matrix.scaleM(mMVPMatrix, 0, 0.333f, 0.333f, 1.0f);
-            Matrix.translateM(mMVPMatrix, 0, -2.0f, -2.0f, 0.0f);
-            GLES20.glUseProgram(mPrograms[0]);
-            drawQuad(mainQuadVertices, mMVPMatrix);
-            Matrix.translateM(mMVPMatrix, 0, 2.0f, 0.0f, 0.0f);
-            GLES20.glUseProgram(mPrograms[1]);
-            drawQuad(mainQuadVertices, mMVPMatrix);
-            Matrix.translateM(mMVPMatrix, 0, 2.0f, 0.0f, 0.0f);
-            GLES20.glUseProgram(mPrograms[2]);
-            drawQuad(mainQuadVertices, mMVPMatrix);
-            Matrix.translateM(mMVPMatrix, 0, -4.0f, 2.0f, 0.0f);
-            GLES20.glUseProgram(mPrograms[3]);
-            drawQuad(mainQuadVertices, mMVPMatrix);
-            Matrix.translateM(mMVPMatrix, 0, 2.0f, 0.0f, 0.0f);
-            GLES20.glUseProgram(mNormalProgram);
-            drawQuad(mainQuadVertices, mMVPMatrix);
-            Matrix.translateM(mMVPMatrix, 0, 2.0f, 0.0f, 0.0f);
-            GLES20.glUseProgram(mPrograms[4]);
-            drawQuad(mainQuadVertices, mMVPMatrix);
+            long time = System.currentTimeMillis();
+            float percent = (time - mAnimationStartTime) / ANIMATION_DURATION;
+            if (percent < 1.0f) {
+                Matrix.setIdentityM(mMVPMatrix, 0);
+                Matrix.scaleM(mMVPMatrix, 0, 1.0f - 0.666f * percent, 1.0f - 0.666f * percent, 1.0f);
+                float x = -2.0f + 2.0f * (mProgramCounter % 3);
+                float y = 2.0f - 2.0f * (float)(Math.floor(mProgramCounter / 3));
+                Matrix.translateM(mMVPMatrix, 0, x*percent, y*percent, 0.0f);
+                GLES20.glUseProgram(mProgram);
+                drawQuad(mainQuadVertices, mMVPMatrix);
+            } else {
+                for (int i = 0; i < mPrograms.length; ++i) {
+                    Matrix.setIdentityM(mMVPMatrix, 0);
+                    Matrix.scaleM(mMVPMatrix, 0, 0.333f, 0.333f, 1.0f);
+                    float x = -2.0f + 2.0f * (i % 3);
+                    float y = 2.0f - 2.0f * (float)(Math.floor(i / 3));
+                    Matrix.translateM(mMVPMatrix, 0, x, y, 0.0f);
+                    GLES20.glUseProgram(mPrograms[i]);
+                    drawQuad(mainQuadVertices, mMVPMatrix);
+                }
+            }
         }
         
         if (mSaveNextFrame) {
@@ -176,7 +203,6 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         checkGlError("glEnableVertexAttribArray maTextureHandle");
         if (mTexRatio != null)
             GLES20.glUniform2f(muSizeHandle, mTexRatio.width, mTexRatio.height);
-        
         GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, mvpMatrix, 0);
         checkGlError("Before GlDrawArrays");
         GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6);
@@ -197,29 +223,31 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         }
         mProgram = mPrograms[0];
         mNormalProgram = createProgram(mVertexShader, mFragmentShaderNormal);
-        maPositionHandle = GLES20.glGetAttribLocation(mProgram, "aPosition");
-        checkGlError("glGetAttribLocation aPosition");
-        if (maPositionHandle == -1) {
-            throw new RuntimeException("Could not get attrib location for aPosition");
-        }
-        maTextureHandle = GLES20.glGetAttribLocation(mProgram, "aTextureCoord");
-        checkGlError("glGetAttribLocation aTextureCoord");
-        if (maTextureHandle == -1) {
-            throw new RuntimeException("Could not get attrib location for aTextureCoord");
-        }
-
-        muMVPMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uMVPMatrix");
-        checkGlError("glGetUniformLocation uMVPMatrix");
-        if (muMVPMatrixHandle == -1) {
-            throw new RuntimeException("Could not get uniform location for uMVPMatrix");
-        }
-        muSizeHandle = GLES20.glGetUniformLocation(mProgram, "uSize");
-        checkGlError("glGetUniformLocation uSize");
-        if (muSizeHandle == -1) {
-            throw new RuntimeException("Could not get uniform location for uSize");
-        }
+        maTextureHandle = getAttribLoc("aTextureCoord");
+        maPositionHandle = getAttribLoc("aPosition");
+       
+        muMVPMatrixHandle = getUniformLoc("uMVPMatrix");
+        muSizeHandle = getUniformLoc("uSize");
         
         Matrix.setIdentityM(mMVPMatrix, 0);
+    }
+    
+    private int getUniformLoc(String name) {
+        int handle = GLES20.glGetUniformLocation(mProgram, name);
+        checkGlError("glGetUniformLocation " + name);
+        if (handle == -1) {
+            throw new RuntimeException("Could not get uniform location for " + name);
+        }
+        return handle;
+    }
+    
+    private int getAttribLoc(String name) {
+        int handle = GLES20.glGetAttribLocation(mProgram, name);
+        checkGlError("glGetAttribLocation " + name);
+        if (handle == -1) {
+            throw new RuntimeException("Could not get attrib location for " + name);
+        }
+        return handle;
     }
     
     public void setTextureRatio(float width, float height) {
@@ -321,14 +349,15 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         "precision mediump float;\n" +
         "varying vec2 vTextureCoord;\n" +
         "uniform sampler2D sTexture;\n" +
-        "uniform vec2 uSize;\n\n" + // The size of the top left corner of the actual image in the texture.  Dimensions should be normalized between 0 and these values.
+        "uniform vec2 uSize;\n" + // The size of the top left corner of the actual image in the texture.  Dimensions should be normalized between 0 and these values.
+        //"uniform float uTime;\n" +
         "vec2 norm(vec2 inSize) {\n" +
         "  return inSize / uSize;\n" +
         "}\n" +
         "vec2 denorm(vec2 inSize) {\n" +
         "  return inSize * uSize;\n" +
         "}\n";
-
+    
     private final String mVertexShader =
         "uniform mat4 uMVPMatrix;\n" +
         "attribute vec4 aPosition;\n" +
@@ -347,6 +376,43 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         "  vec2 mcen =  0.07*log(length(cen))*normalize(cen);\n" +
         "  gl_FragColor = texture2D(sTexture, denorm(normalized+mcen));\n" +
         "}\n";
+    
+    private final String mFragmentShaderTrippy =
+        PROGRAM_HEADER +
+        "  const float C_PI    = 3.1415;\n" +
+        "  const float C_2PI   = 2.0 * C_PI;\n" +
+        "  const float C_2PI_I = 1.0 / (2.0 * C_PI);\n" +
+        "  const float C_PI_2  = C_PI / 2.0;\n" +
+        "  const vec2 Freq = vec2(5.0, 5.0);\n" + 
+        "  const vec2 Amplitude = vec2(.05, .05);\n" + 
+        "  const float uTime = 0.0;\n" +
+
+        "float normalizeRad(float rad) {" +
+        "  rad = rad * C_2PI_I;\n" +
+        "  rad = fract(rad);\n" +
+        "  rad = rad * C_2PI;\n" +
+        
+        "  if (rad > C_PI) rad = rad - C_2PI;\n" +
+        "  if (rad < -C_PI) rad = rad + C_2PI;\n" +
+        "  if (rad > C_PI_2) rad = C_PI - rad;\n" +
+        "  if (rad < -C_PI_2) rad = -C_PI - rad;\n" +
+        "  return rad;\n" +
+        "}" +
+
+        "void main() {\n" +
+        "  vec2 perturb;\n" +
+        "  vec4 color;\n" + 
+        "  vec2 normalized = norm(vTextureCoord);\n" +
+        "  float rad = (normalized.x + normalized.y - 1.0 + uTime) * Freq.x;\n" +
+        "  rad = normalizeRad(rad);\n" +
+        "  perturb.x = (rad - (rad * rad * rad / 6.0)) * Amplitude.x;\n" +
+        
+        "  rad = (normalized.x - normalized.y + uTime) * Freq.y;\n" +
+        "  rad = normalizeRad(rad);\n" +
+        "  perturb.y = (rad - (rad * rad * rad / 6.0)) * Amplitude.y;\n" +
+        "  gl_FragColor = texture2D(sTexture, perturb + denorm(normalized));\n" +
+        "}\n";
+
     private final String mFragmentShaderBulge =
         PROGRAM_HEADER +
         "void main() {\n" +
@@ -387,6 +453,17 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         "  gl_FragColor = vec4(1.0) - texture2D(sTexture, denorm(normalized));\n" +
         "}\n";
     
+    private final String mFragmentShaderPsychadelic =
+        PROGRAM_HEADER +
+        "void main() {\n" +
+        "  vec2 normalized = norm(vTextureCoord);\n" +
+        "  vec4 color = texture2D(sTexture, denorm(normalized));\n" +
+        "  color.r = fract(color.r + .2);\n" +
+        "  color.g = fract(color.g + .2);\n" +
+        "  color.b = fract(color.b + .2);\n" +
+        "  gl_FragColor = color;\n" +
+        "}\n";
+    
     private final String mFragmentShaderMirror =
         PROGRAM_HEADER +
         "void main() {\n" +
@@ -415,6 +492,8 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     private int[] mPrograms;
     private int mProgramCounter = 0;
     private String[] mShaders = {
+            mFragmentShaderTrippy,
+            mFragmentShaderPsychadelic,
             mFragmentShaderPinch,
             mFragmentShaderDuotone,
             mFragmentShaderInvert,
