@@ -14,11 +14,11 @@ import com.mijoro.photofunhouse.CameraPreviewSink.TextureRatio;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
 import android.opengl.GLSurfaceView.Renderer;
+import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 
@@ -50,21 +50,19 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         layer.yuv420sp2rgb(in, width, height, textureSize, out);
     }
 
-    public GLLayer(Context c) {
-        super(c);
+    
+    public GLLayer(Context c, AttributeSet attrs) {
+        super(c, attrs);
         layer = this;
         setEGLContextClientVersion(2);
         this.setRenderer(this);
-        mTriangleVertices = ByteBuffer.allocateDirect(mTriangleVerticesData.length
+        mainQuadVertices = ByteBuffer.allocateDirect(mTriangleVerticesData.length
                 * FLOAT_SIZE_BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
-        mTriangleVertices.put(mTriangleVerticesData).position(0);
-        
-        setOnClickListener(new OnClickListener() {
-            public void onClick(View v) {
-                mSaveNextFrame = true;
-            }
-        });
-        sink = new CameraPreviewSink();
+        mainQuadVertices.put(mTriangleVerticesData).position(0);
+    }
+    
+    public void setCameraPreviewSink(CameraPreviewSink sink) {
+        this.sink = sink;
         mTexRatio = sink.getTextureRatio();
         setTextureRatio(mTexRatio.width, mTexRatio.height);
     }
@@ -84,9 +82,13 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     public void nextProgram() {
         ++mProgramCounter;
         if (mProgramCounter >= mPrograms.length) mProgramCounter = 0;
-        mProgram = mPrograms[mProgramCounter];  
+        mProgram = mPrograms[mProgramCounter]; 
     }
-
+    public void previousProgram() {
+        --mProgramCounter;
+        if (mProgramCounter < 0) mProgramCounter = mPrograms.length - 1;
+        mProgram = mPrograms[mProgramCounter]; 
+    }
     public void saveImage() {
         int w = mWidth;
         int h = mHeight;
@@ -125,29 +127,35 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         sink.bindTexture();
 
-        mTriangleVertices.position(TRIANGLE_VERTICES_DATA_POS_OFFSET);
+        drawQuad(mainQuadVertices, mMVPMatrix);
+
+        
+        if (mSaveNextFrame) {
+            saveImage();
+            mSaveNextFrame = false;
+        }
+    }
+    
+    private void drawQuad(FloatBuffer buffer, float[] mvpMatrix) {
+        buffer.position(TRIANGLE_VERTICES_DATA_POS_OFFSET);
         GLES20.glVertexAttribPointer(maPositionHandle, 3, GLES20.GL_FLOAT, false,
-                TRIANGLE_VERTICES_DATA_STRIDE_BYTES, mTriangleVertices);
+                TRIANGLE_VERTICES_DATA_STRIDE_BYTES, buffer);
         checkGlError("glVertexAttribPointer maPosition");
-        mTriangleVertices.position(TRIANGLE_VERTICES_DATA_UV_OFFSET);
+        buffer.position(TRIANGLE_VERTICES_DATA_UV_OFFSET);
         GLES20.glEnableVertexAttribArray(maPositionHandle);
         checkGlError("glEnableVertexAttribArray maPositionHandle");
         GLES20.glVertexAttribPointer(maTextureHandle, 2, GLES20.GL_FLOAT, false,
-                TRIANGLE_VERTICES_DATA_STRIDE_BYTES, mTriangleVertices);
+                TRIANGLE_VERTICES_DATA_STRIDE_BYTES, buffer);
         checkGlError("glVertexAttribPointer maTextureHandle");
         GLES20.glEnableVertexAttribArray(maTextureHandle);
         checkGlError("glEnableVertexAttribArray maTextureHandle");
         if (mTexRatio != null)
             GLES20.glUniform2f(muSizeHandle, mTexRatio.width, mTexRatio.height);
         
-        GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, mMVPMatrix, 0);
+        GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, mvpMatrix, 0);
+        checkGlError("Before GlDrawArrays");
         GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6);
         checkGlError("glDrawArrays");
-        
-        if (mSaveNextFrame) {
-            saveImage();
-            mSaveNextFrame = false;
-        }
     }
 
     public void onSurfaceChanged(GL10 gl, int width, int height) {
@@ -163,6 +171,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
             mPrograms[i++] = createProgram(mVertexShader, fshader);
         }
         mProgram = mPrograms[0];
+        mNextProgram = mPrograms[1];
         maPositionHandle = GLES20.glGetAttribLocation(mProgram, "aPosition");
         checkGlError("glGetAttribLocation aPosition");
         if (maPositionHandle == -1) {
@@ -186,14 +195,17 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         }
         
         Matrix.setIdentityM(mMVPMatrix, 0);
+        Matrix.setIdentityM(mNextMVPMatrix, 0);
+        Matrix.scaleM(mNextMVPMatrix, 0, 0.3f, 0.2f, 1.0f);
+        Matrix.translateM(mNextMVPMatrix, 0, 2.5f, -4.0f, 0);
     }
     
     public void setTextureRatio(float width, float height) {
         for (int index : mTriangleHeights) {
-            mTriangleVertices.put(index, height);
+            mainQuadVertices.put(index, height);
         }
         for (int index : mTriangleWidths) {
-            mTriangleVertices.put(index, width);
+            mainQuadVertices.put(index, width);
         }
     }
 
@@ -281,7 +293,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     private int[] mTriangleHeights = {4 ,19, 24};
     private int[] mTriangleWidths = {13, 23, 28};
 
-    private FloatBuffer mTriangleVertices;
+    private FloatBuffer mainQuadVertices;
     
     private final String PROGRAM_HEADER =
         "precision mediump float;\n" +
@@ -332,7 +344,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         PROGRAM_HEADER +
         "void main() {\n" +
         "  vec2 normalized = norm(vTextureCoord);\n" +
-        "  vec4 color = texture2D(sTexture, vTextureCoord);\n" +
+        "  vec4 color = texture2D(sTexture, denorm(normalized));\n" +
         "  vec4 result = vec4(color.r + color.g + color.b / 3.0);\n" +
         "  result = (result.r < 0.2 ) ? vec4(0.0) : vec4(1.0, 0.0, 0.0, 1.0);\n" +
         "  result.a = color.a;\n" +
@@ -375,8 +387,10 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         "  gl_FragColor = texture2D(sTexture, denorm(texCoord));\n" +
         "}\n";
     private float[] mMVPMatrix = new float[16];
+    private float[] mNextMVPMatrix = new float[16];
 
     private int mProgram;
+    private int mNextProgram;
     private int[] mPrograms;
     private int mProgramCounter = 0;
     private String[] mShaders = {
