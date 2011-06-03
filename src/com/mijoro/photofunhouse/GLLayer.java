@@ -220,9 +220,6 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         }
         
         Matrix.setIdentityM(mMVPMatrix, 0);
-        Matrix.setIdentityM(mNextMVPMatrix, 0);
-        Matrix.scaleM(mNextMVPMatrix, 0, 0.3f, 0.2f, 1.0f);
-        Matrix.translateM(mNextMVPMatrix, 0, 2.5f, -4.0f, 0);
     }
     
     public void setTextureRatio(float width, float height) {
@@ -412,7 +409,6 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         "  gl_FragColor = texture2D(sTexture, denorm(texCoord));\n" +
         "}\n";
     private float[] mMVPMatrix = new float[16];
-    private float[] mNextMVPMatrix = new float[16];
 
     private int mProgram;
     private int mNormalProgram;
