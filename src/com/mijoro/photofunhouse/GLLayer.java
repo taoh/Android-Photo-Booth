@@ -14,6 +14,7 @@ import com.mijoro.photofunhouse.CameraPreviewSink.TextureRatio;
 import com.mijoro.photofunhouse.shaders.BulgeShader;
 import com.mijoro.photofunhouse.shaders.DuotoneShader;
 import com.mijoro.photofunhouse.shaders.InverseShader;
+import com.mijoro.photofunhouse.shaders.KaleidomirrorShader;
 import com.mijoro.photofunhouse.shaders.MirrorShader;
 import com.mijoro.photofunhouse.shaders.PinchShader;
 import com.mijoro.photofunhouse.shaders.ShaderProgram;
@@ -39,6 +40,8 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     private boolean mSaveNextFrame = false;
     private boolean mOverviewMode = false;
     private float mTime = 0.0f;
+    private float mTouchX = 0.5f;
+    private float mTouchY = 0.5f;
     
     private long mAnimationStartTime = 0;
     
@@ -73,14 +76,34 @@ public class GLLayer extends GLSurfaceView implements Renderer {
                 * FLOAT_SIZE_BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer();
         mainQuadVertices.put(mTriangleVerticesData).position(0);
         setOnTouchListener(new OnTouchListener() {
+            private static final float TAP_HYSTERESIS = 10.0f;
+            private MotionEvent downEvent;
+            private boolean moving = false;
+            
             public boolean onTouch(View v, MotionEvent event) {
+                if (!mOverviewMode) {
+                    if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                        downEvent = MotionEvent.obtain(event);
+                        moving = false;
+                    } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
+                        if (Math.abs(event.getX() - downEvent.getX()) > TAP_HYSTERESIS ||
+                            Math.abs(event.getY() - downEvent.getY()) > TAP_HYSTERESIS) {
+                            moving = true;
+                            mTouchX = event.getX() / getWidth();
+                            mTouchY = event.getY() / getHeight();
+                        }
+                    } else if (event.getAction() == MotionEvent.ACTION_UP) {
+                        System.out.println("UP AND MOVING IS " + moving);
+                        if (!moving) toggleOverview();
+                        moving = false;
+                        return false;
+                    }
+                }
                 if (mOverviewMode && event.getAction() == MotionEvent.ACTION_UP) {
                     int xindex = (int) (3.0f * event.getX() / (float)getWidth());
                     int yindex = (int) (3.0f * event.getY() / (float)getHeight());
                     int index = 3 * yindex + xindex % 3;
-                    if (index >= mPrograms.length) return false;
-                    mProgramCounter = index;
-                    mProgram = mPrograms[mProgramCounter];
+                   setProgramIndex(index);
                 }
                 return false;
             }
@@ -90,6 +113,15 @@ public class GLLayer extends GLSurfaceView implements Renderer {
                 
             }
         });
+    }
+    
+    public void setProgramIndex(int index) {
+        if (index >= mPrograms.length) return;
+        mProgramCounter = index;
+        mProgram = mPrograms[mProgramCounter];
+        mTouchX = 0.5f;
+        mTouchY = 0.5f;
+        toggleOverview();
     }
     
     public void setCameraPreviewSink(CameraPreviewSink sink) {
@@ -111,6 +143,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     }
     
     public void toggleOverview() {
+        System.out.println("TOGGLING OVERVIEW");
         mAnimationStartTime = System.currentTimeMillis();
         mOverviewMode = !mOverviewMode;
     }
@@ -164,7 +197,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         sink.bindTexture();
         if (!mOverviewMode) {
             Matrix.setIdentityM(mMVPMatrix, 0);
-            mProgram.drawQuad(mainQuadVertices, mMVPMatrix, mTime);
+            mProgram.drawQuad(mainQuadVertices, mMVPMatrix, mTime, mTouchX, mTouchY);
         } else {
             long time = System.currentTimeMillis();
             float percent = Math.min((time - mAnimationStartTime) / ANIMATION_DURATION, 1.0f);
@@ -173,7 +206,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
             float x = -2.0f + 2.0f * (mProgramCounter % 3);
             float y = 2.0f - 2.0f * (float)(Math.floor(mProgramCounter / 3));
             Matrix.translateM(mMVPMatrix, 0, x*percent, y*percent, 0.0f);
-            mProgram.drawQuad(mainQuadVertices, mMVPMatrix, mTime);
+            mProgram.drawQuad(mainQuadVertices, mMVPMatrix, mTime, mTouchX, mTouchY);
             for (int i = 0; i < mPrograms.length; ++i) {
                 if (i == mProgramCounter) continue;
                 Matrix.setIdentityM(mMVPMatrix, 0);
@@ -181,7 +214,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
                 x = -2.0f + 2.0f * (i % 3);
                 y = 2.0f - 2.0f * (float)(Math.floor(i / 3));
                 Matrix.translateM(mMVPMatrix, 0, x, y, 0.0f);
-                mPrograms[i].drawQuad(mainQuadVertices, mMVPMatrix, mTime);
+                mPrograms[i].drawQuad(mainQuadVertices, mMVPMatrix, mTime, mTouchX, mTouchY);
             }
         }
         
@@ -198,13 +231,14 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     }
 
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-        mPrograms = new ShaderProgram[6];
+        mPrograms = new ShaderProgram[7];
         mPrograms[0] = new PinchShader(mTexRatio);
         mPrograms[1] = new InverseShader(mTexRatio);
         mPrograms[2] = new DuotoneShader(mTexRatio);
         mPrograms[3] = new MirrorShader(mTexRatio);
         mPrograms[4] = new TrippyShader(mTexRatio);
         mPrograms[5] = new BulgeShader(mTexRatio);
+        mPrograms[6] = new KaleidomirrorShader(mTexRatio);
         
         mProgram = mPrograms[0];
 

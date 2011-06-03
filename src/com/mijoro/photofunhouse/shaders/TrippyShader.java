@@ -13,9 +13,9 @@ public class TrippyShader extends ShaderProgram {
     }
     
     @Override
-    protected void setupExtraVariables(float time) {
-        super.setupExtraVariables(time);
-        GLES20.glUniform1f(muTimeHandle, time);
+    protected void setupExtraVariables(float time, float touchX, float touchY) {
+        super.setupExtraVariables(time, touchX, touchY);
+        GLES20.glUniform1f(muTimeHandle, time * touchX * 2.0f);
     }
 
     private final String mFragmentShaderTrippy =

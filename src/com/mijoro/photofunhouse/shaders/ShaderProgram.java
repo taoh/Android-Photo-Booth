@@ -32,11 +32,11 @@ public abstract class ShaderProgram {
         muSizeHandle = getUniformLoc("uSize");
     }
     
-    protected void setupExtraVariables(float time) {}
+    protected void setupExtraVariables(float time, float touchX, float touchY) {}
     
-    public void drawQuad(FloatBuffer buffer, float[] mvpMatrix, float time) {
+    public void drawQuad(FloatBuffer buffer, float[] mvpMatrix, float time, float touchX, float touchY) {
         GLES20.glUseProgram(mProgram);
-        setupExtraVariables(time);
+        setupExtraVariables(time, touchX, touchY);
         buffer.position(TRIANGLE_VERTICES_DATA_POS_OFFSET);
         GLES20.glVertexAttribPointer(maPositionHandle, 3, GLES20.GL_FLOAT, false,
                 TRIANGLE_VERTICES_DATA_STRIDE_BYTES, buffer);

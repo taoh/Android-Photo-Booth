@@ -34,12 +34,6 @@ public class FunhouseActivity extends Activity {
         mHideAnimation = new AlphaAnimation(1.0f, 0.2f);
         mHideAnimation.setFillAfter(true);
         mHideAnimation.setDuration(200);
-        glView.setOnClickListener(new OnClickListener() {
-            public void onClick(View v) {
-                glView.toggleOverview();
-            }
-        });
-
     }
     
     @Override
