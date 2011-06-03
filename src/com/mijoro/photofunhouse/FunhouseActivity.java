@@ -28,24 +28,12 @@ public class FunhouseActivity extends Activity {
         CameraPreviewSink sink = new CameraPreviewSink();
         glView.setCameraPreviewSink(sink);
         
-        findViewById(R.id.next_button).setOnClickListener(new OnClickListener() {
-            public void onClick(View v) {
-                glView.nextProgram();
-            }
-        });
-        findViewById(R.id.previous_button).setOnClickListener(new OnClickListener() {
-            public void onClick(View v) {
-                glView.previousProgram();
-            }
-        });
-        
         mShowAnimation = new AlphaAnimation(0.2f, 1.0f);
         mShowAnimation.setFillAfter(true);
         mShowAnimation.setDuration(200);
         mHideAnimation = new AlphaAnimation(1.0f, 0.2f);
         mHideAnimation.setFillAfter(true);
         mHideAnimation.setDuration(200);
-        mToolbar.startAnimation(mHideAnimation);
         glView.setOnClickListener(new OnClickListener() {
             public void onClick(View v) {
                 glView.toggleOverview();

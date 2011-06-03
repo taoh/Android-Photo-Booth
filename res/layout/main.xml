@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent">
+  <com.mijoro.photofunhouse.GLLayer
+  	android:id="@+id/FunhouseLayer"
+  	android:layout_width="match_parent"
+  	android:layout_height="match_parent"
+  	/>
+  <LinearLayout
+    android:visibility="gone"
+  	android:id="@+id/Toolbar"
+  	android:layout_width="match_parent"
+  	android:layout_height="wrap_content"
+  	android:layout_gravity="bottom">
+    <Button android:text="Previous" android:id="@+id/previous_button" android:layout_width="wrap_content" android:layout_height="wrap_content"></Button>
+	<ImageButton android:id="@+id/camera_button" android:layout_width="wrap_content" android:layout_height="wrap_content" android:src="@drawable/photo" android:background="@null"/>
+  	<Button android:text="Next" android:layout_gravity="right" android:id="@+id/next_button" android:layout_width="wrap_content" android:layout_height="wrap_content" ></Button>
+  </LinearLayout>
+</FrameLayout>

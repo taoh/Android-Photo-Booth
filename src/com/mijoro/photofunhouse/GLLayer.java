@@ -11,6 +11,13 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import com.mijoro.photofunhouse.CameraPreviewSink.TextureRatio;
+import com.mijoro.photofunhouse.shaders.BulgeShader;
+import com.mijoro.photofunhouse.shaders.DuotoneShader;
+import com.mijoro.photofunhouse.shaders.InverseShader;
+import com.mijoro.photofunhouse.shaders.MirrorShader;
+import com.mijoro.photofunhouse.shaders.PinchShader;
+import com.mijoro.photofunhouse.shaders.ShaderProgram;
+import com.mijoro.photofunhouse.shaders.TrippyShader;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -151,34 +158,30 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         mTime += 0.01f;
         GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         GLES20.glClear( GLES20.GL_DEPTH_BUFFER_BIT | GLES20.GL_COLOR_BUFFER_BIT);
-        GLES20.glUseProgram(mProgram);
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST);
         checkGlError("glUseProgram");
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         sink.bindTexture();
         if (!mOverviewMode) {
             Matrix.setIdentityM(mMVPMatrix, 0);
-            drawQuad(mainQuadVertices, mMVPMatrix);
+            mProgram.drawQuad(mainQuadVertices, mMVPMatrix, mTime);
         } else {
             long time = System.currentTimeMillis();
-            float percent = (time - mAnimationStartTime) / ANIMATION_DURATION;
-            if (percent < 1.0f) {
+            float percent = Math.min((time - mAnimationStartTime) / ANIMATION_DURATION, 1.0f);
+            Matrix.setIdentityM(mMVPMatrix, 0);
+            Matrix.scaleM(mMVPMatrix, 0, 1.0f - 0.666f * percent, 1.0f - 0.666f * percent, 1.0f);
+            float x = -2.0f + 2.0f * (mProgramCounter % 3);
+            float y = 2.0f - 2.0f * (float)(Math.floor(mProgramCounter / 3));
+            Matrix.translateM(mMVPMatrix, 0, x*percent, y*percent, 0.0f);
+            mProgram.drawQuad(mainQuadVertices, mMVPMatrix, mTime);
+            for (int i = 0; i < mPrograms.length; ++i) {
+                if (i == mProgramCounter) continue;
                 Matrix.setIdentityM(mMVPMatrix, 0);
-                Matrix.scaleM(mMVPMatrix, 0, 1.0f - 0.666f * percent, 1.0f - 0.666f * percent, 1.0f);
-                float x = -2.0f + 2.0f * (mProgramCounter % 3);
-                float y = 2.0f - 2.0f * (float)(Math.floor(mProgramCounter / 3));
-                Matrix.translateM(mMVPMatrix, 0, x*percent, y*percent, 0.0f);
-                GLES20.glUseProgram(mProgram);
-                drawQuad(mainQuadVertices, mMVPMatrix);
-            } else {
-                for (int i = 0; i < mPrograms.length; ++i) {
-                    Matrix.setIdentityM(mMVPMatrix, 0);
-                    Matrix.scaleM(mMVPMatrix, 0, 0.333f, 0.333f, 1.0f);
-                    float x = -2.0f + 2.0f * (i % 3);
-                    float y = 2.0f - 2.0f * (float)(Math.floor(i / 3));
-                    Matrix.translateM(mMVPMatrix, 0, x, y, 0.0f);
-                    GLES20.glUseProgram(mPrograms[i]);
-                    drawQuad(mainQuadVertices, mMVPMatrix);
-                }
+                Matrix.scaleM(mMVPMatrix, 0, 0.333f, 0.333f, 1.0f);
+                x = -2.0f + 2.0f * (i % 3);
+                y = 2.0f - 2.0f * (float)(Math.floor(i / 3));
+                Matrix.translateM(mMVPMatrix, 0, x, y, 0.0f);
+                mPrograms[i].drawQuad(mainQuadVertices, mMVPMatrix, mTime);
             }
         }
         
@@ -186,27 +189,6 @@ public class GLLayer extends GLSurfaceView implements Renderer {
             saveImage();
             mSaveNextFrame = false;
         }
-    }
-    
-    private void drawQuad(FloatBuffer buffer, float[] mvpMatrix) {
-        buffer.position(TRIANGLE_VERTICES_DATA_POS_OFFSET);
-        GLES20.glVertexAttribPointer(maPositionHandle, 3, GLES20.GL_FLOAT, false,
-                TRIANGLE_VERTICES_DATA_STRIDE_BYTES, buffer);
-        checkGlError("glVertexAttribPointer maPosition");
-        buffer.position(TRIANGLE_VERTICES_DATA_UV_OFFSET);
-        GLES20.glEnableVertexAttribArray(maPositionHandle);
-        checkGlError("glEnableVertexAttribArray maPositionHandle");
-        GLES20.glVertexAttribPointer(maTextureHandle, 2, GLES20.GL_FLOAT, false,
-                TRIANGLE_VERTICES_DATA_STRIDE_BYTES, buffer);
-        checkGlError("glVertexAttribPointer maTextureHandle");
-        GLES20.glEnableVertexAttribArray(maTextureHandle);
-        checkGlError("glEnableVertexAttribArray maTextureHandle");
-        if (mTexRatio != null)
-            GLES20.glUniform2f(muSizeHandle, mTexRatio.width, mTexRatio.height);
-        GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, mvpMatrix, 0);
-        checkGlError("Before GlDrawArrays");
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6);
-        checkGlError("glDrawArrays");
     }
 
     public void onSurfaceChanged(GL10 gl, int width, int height) {
@@ -216,38 +198,18 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     }
 
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-        mPrograms = new int[mShaders.length];
-        int i = 0;
-        for (String fshader : mShaders) {
-            mPrograms[i++] = createProgram(mVertexShader, fshader);
-        }
+        mPrograms = new ShaderProgram[6];
+        mPrograms[0] = new PinchShader(mTexRatio);
+        mPrograms[1] = new InverseShader(mTexRatio);
+        mPrograms[2] = new DuotoneShader(mTexRatio);
+        mPrograms[3] = new MirrorShader(mTexRatio);
+        mPrograms[4] = new TrippyShader(mTexRatio);
+        mPrograms[5] = new BulgeShader(mTexRatio);
+        
         mProgram = mPrograms[0];
-        mNormalProgram = createProgram(mVertexShader, mFragmentShaderNormal);
-        maTextureHandle = getAttribLoc("aTextureCoord");
-        maPositionHandle = getAttribLoc("aPosition");
-       
-        muMVPMatrixHandle = getUniformLoc("uMVPMatrix");
-        muSizeHandle = getUniformLoc("uSize");
+
         
         Matrix.setIdentityM(mMVPMatrix, 0);
-    }
-    
-    private int getUniformLoc(String name) {
-        int handle = GLES20.glGetUniformLocation(mProgram, name);
-        checkGlError("glGetUniformLocation " + name);
-        if (handle == -1) {
-            throw new RuntimeException("Could not get uniform location for " + name);
-        }
-        return handle;
-    }
-    
-    private int getAttribLoc(String name) {
-        int handle = GLES20.glGetAttribLocation(mProgram, name);
-        checkGlError("glGetAttribLocation " + name);
-        if (handle == -1) {
-            throw new RuntimeException("Could not get attrib location for " + name);
-        }
-        return handle;
     }
     
     public void setTextureRatio(float width, float height) {
@@ -324,9 +286,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     }
 
     private static final int FLOAT_SIZE_BYTES = 4;
-    private static final int TRIANGLE_VERTICES_DATA_STRIDE_BYTES = 5 * FLOAT_SIZE_BYTES;
-    private static final int TRIANGLE_VERTICES_DATA_POS_OFFSET = 0;
-    private static final int TRIANGLE_VERTICES_DATA_UV_OFFSET = 3;
+
     private final float[] mTriangleVerticesData = {
             // X,   Y,   Z,  U,    V
             -1.0f, -1.0f, 0, 0.0f, 0.0f,// 0  1  2  3  4
@@ -344,166 +304,11 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     private int[] mTriangleWidths = {13, 23, 28};
 
     private FloatBuffer mainQuadVertices;
-    
-    private final String PROGRAM_HEADER =
-        "precision mediump float;\n" +
-        "varying vec2 vTextureCoord;\n" +
-        "uniform sampler2D sTexture;\n" +
-        "uniform vec2 uSize;\n" + // The size of the top left corner of the actual image in the texture.  Dimensions should be normalized between 0 and these values.
-        //"uniform float uTime;\n" +
-        "vec2 norm(vec2 inSize) {\n" +
-        "  return inSize / uSize;\n" +
-        "}\n" +
-        "vec2 denorm(vec2 inSize) {\n" +
-        "  return inSize * uSize;\n" +
-        "}\n";
-    
-    private final String mVertexShader =
-        "uniform mat4 uMVPMatrix;\n" +
-        "attribute vec4 aPosition;\n" +
-        "attribute vec2 aTextureCoord;\n" +
-        "varying vec2 vTextureCoord;\n" +
-        "void main() {\n" +
-        "  gl_Position = uMVPMatrix * aPosition;\n" +
-        "  vTextureCoord = vec2(aTextureCoord.x, 1.0-aTextureCoord.y);\n" +
-        "}\n";
 
-    private final String mFragmentShaderCreepy =
-        PROGRAM_HEADER +
-        "void main() {\n" +
-        "  vec2 normalized = norm(vTextureCoord);\n" +
-        "  vec2 cen = vec2(0.5,0.5) - normalized;\n" +
-        "  vec2 mcen =  0.07*log(length(cen))*normalize(cen);\n" +
-        "  gl_FragColor = texture2D(sTexture, denorm(normalized+mcen));\n" +
-        "}\n";
-    
-    private final String mFragmentShaderTrippy =
-        PROGRAM_HEADER +
-        "  const float C_PI    = 3.1415;\n" +
-        "  const float C_2PI   = 2.0 * C_PI;\n" +
-        "  const float C_2PI_I = 1.0 / (2.0 * C_PI);\n" +
-        "  const float C_PI_2  = C_PI / 2.0;\n" +
-        "  const vec2 Freq = vec2(5.0, 5.0);\n" + 
-        "  const vec2 Amplitude = vec2(.05, .05);\n" + 
-        "  const float uTime = 0.0;\n" +
-
-        "float normalizeRad(float rad) {" +
-        "  rad = rad * C_2PI_I;\n" +
-        "  rad = fract(rad);\n" +
-        "  rad = rad * C_2PI;\n" +
-        
-        "  if (rad > C_PI) rad = rad - C_2PI;\n" +
-        "  if (rad < -C_PI) rad = rad + C_2PI;\n" +
-        "  if (rad > C_PI_2) rad = C_PI - rad;\n" +
-        "  if (rad < -C_PI_2) rad = -C_PI - rad;\n" +
-        "  return rad;\n" +
-        "}" +
-
-        "void main() {\n" +
-        "  vec2 perturb;\n" +
-        "  vec4 color;\n" + 
-        "  vec2 normalized = norm(vTextureCoord);\n" +
-        "  float rad = (normalized.x + normalized.y - 1.0 + uTime) * Freq.x;\n" +
-        "  rad = normalizeRad(rad);\n" +
-        "  perturb.x = (rad - (rad * rad * rad / 6.0)) * Amplitude.x;\n" +
-        
-        "  rad = (normalized.x - normalized.y + uTime) * Freq.y;\n" +
-        "  rad = normalizeRad(rad);\n" +
-        "  perturb.y = (rad - (rad * rad * rad / 6.0)) * Amplitude.y;\n" +
-        "  gl_FragColor = texture2D(sTexture, perturb + denorm(normalized));\n" +
-        "}\n";
-
-    private final String mFragmentShaderBulge =
-        PROGRAM_HEADER +
-        "void main() {\n" +
-        "  vec2 normalized = norm(vTextureCoord);\n" +
-        "  vec2 normCoord = vec2(2.0) * normalized - vec2(1.0);\n" +
-        "  float r = length(normCoord);\n" +
-        "  float phi = atan(normCoord.y, normCoord.x);\n" +
-        "  r = pow(r, 1.4) * 0.8;\n" + 
-        "  normCoord.x = r* cos(phi);\n" + 
-        "  normCoord.y = r* sin(phi);\n" +
-        "  vec2 texCoord = (normCoord / 2.0 + 0.5);\n" +
-        "  gl_FragColor = texture2D(sTexture, denorm(texCoord));\n" +
-        "}\n";
-    
-   
-    private final String mFragmentShaderDuotone =
-        PROGRAM_HEADER +
-        "void main() {\n" +
-        "  vec2 normalized = norm(vTextureCoord);\n" +
-        "  vec4 color = texture2D(sTexture, denorm(normalized));\n" +
-        "  vec4 result = vec4(color.r + color.g + color.b / 3.0);\n" +
-        "  result = (result.r < 0.2 ) ? vec4(0.0) : vec4(1.0, 0.0, 0.0, 1.0);\n" +
-        "  result.a = color.a;\n" +
-        "  gl_FragColor = result;\n" +
-        "}\n";   
-    
-    private final String mFragmentShaderNormal =
-        PROGRAM_HEADER +
-        "void main() {\n" +
-        "  vec2 normalized = norm(vTextureCoord);\n" +
-        "  gl_FragColor = texture2D(sTexture, denorm(normalized));\n" +
-        "}\n";
-    
-    private final String mFragmentShaderInvert =
-        PROGRAM_HEADER +
-        "void main() {\n" +
-        "  vec2 normalized = norm(vTextureCoord);\n" +
-        "  gl_FragColor = vec4(1.0) - texture2D(sTexture, denorm(normalized));\n" +
-        "}\n";
-    
-    private final String mFragmentShaderPsychadelic =
-        PROGRAM_HEADER +
-        "void main() {\n" +
-        "  vec2 normalized = norm(vTextureCoord);\n" +
-        "  vec4 color = texture2D(sTexture, denorm(normalized));\n" +
-        "  color.r = fract(color.r + .2);\n" +
-        "  color.g = fract(color.g + .2);\n" +
-        "  color.b = fract(color.b + .2);\n" +
-        "  gl_FragColor = color;\n" +
-        "}\n";
-    
-    private final String mFragmentShaderMirror =
-        PROGRAM_HEADER +
-        "void main() {\n" +
-        "  vec2 normalized = norm(vTextureCoord);\n" +
-        "  if (normalized.x > 0.5) {normalized.x = 1.0 - normalized.x;}\n" +
-        "  gl_FragColor = texture2D(sTexture, denorm(normalized));\n" +
-        "}\n";
-
-    private final String mFragmentShaderPinch =
-        PROGRAM_HEADER +
-        "void main() {\n" +
-        "  vec2 normalized = norm(vTextureCoord);\n" +
-        "  vec2 normCoord = vec2(2.0) * normalized - vec2(1.0);\n" +
-        "  float r = length(normCoord);\n" +
-        "  float phi = atan(normCoord.y, normCoord.x);\n" +
-        "  r = pow(r, 1.0/ (1.0 - 1.0 * -1.0)) * 0.8;\n" + 
-        "  normCoord.x = r* cos(phi);\n" + 
-        "  normCoord.y = r* sin(phi);\n" +
-        "  vec2 texCoord = (normCoord / 2.0 + 0.5);\n" +
-        "  gl_FragColor = texture2D(sTexture, denorm(texCoord));\n" +
-        "}\n";
     private float[] mMVPMatrix = new float[16];
-
-    private int mProgram;
-    private int mNormalProgram;
-    private int[] mPrograms;
+    ShaderProgram mProgram;
+    private ShaderProgram[] mPrograms;
     private int mProgramCounter = 0;
-    private String[] mShaders = {
-            mFragmentShaderTrippy,
-            mFragmentShaderPsychadelic,
-            mFragmentShaderPinch,
-            mFragmentShaderDuotone,
-            mFragmentShaderInvert,
-            mFragmentShaderMirror,
-            mFragmentShaderBulge
-    };
-    private int muMVPMatrixHandle;
-    private int muSizeHandle;
-    private int maPositionHandle;
-    private int maTextureHandle;
 
     private static String TAG = "Photo Funhouse";
 }
