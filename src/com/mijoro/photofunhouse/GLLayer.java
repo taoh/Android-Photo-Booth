@@ -249,7 +249,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         mPrograms[5] = new BulgeShader(mTexRatio);
         mPrograms[6] = new KaleidomirrorShader(mTexRatio);
         mPrograms[7] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.pixellate));
-        mPrograms[8] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.horizshift));
+        mPrograms[8] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.outline));
         mProgram = mPrograms[0];
 
         Matrix.setIdentityM(mMVPMatrix, 0);

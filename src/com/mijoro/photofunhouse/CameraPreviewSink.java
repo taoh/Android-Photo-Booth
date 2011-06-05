@@ -26,6 +26,7 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
     TextureRatio mTextureRatio;
     public int textureSize = -1;
     
+    private boolean mDirty;
     ByteBuffer rgbBuffer, rgbBuffer2;
     boolean useOtherBuffer = false;
 
@@ -38,7 +39,7 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
     }
     
     public CameraPreviewSink() {
-        initCamera(CameraInfo.CAMERA_FACING_BACK);
+        initCamera(CameraInfo.CAMERA_FACING_FRONT);
     }
     
     public void switchCamera() {
@@ -86,6 +87,7 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
         byte[] rgb = useOtherBuffer ? rgbBytes2 : rgbBytes;
         GLLayer.decode(yuvs, mPreviewSize.width, mPreviewSize.height, textureSize, rgb);
         mCamera.addCallbackBuffer(yuvs);
+        mDirty = true;
         useOtherBuffer = !useOtherBuffer;
     }
     
@@ -104,10 +106,13 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
                             null);
                     initialized = true;
                 }
-                ByteBuffer buff = useOtherBuffer ? rgbBuffer : rgbBuffer2;
-                GLES20.glTexSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, mPreviewSize.width, mPreviewSize.height,
-                        GLES20.GL_RGB, GLES20.GL_UNSIGNED_BYTE, buff);
-                GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+                if (mDirty) {
+                    ByteBuffer buff = useOtherBuffer ? rgbBuffer : rgbBuffer2;
+                    GLES20.glTexSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, mPreviewSize.width, mPreviewSize.height,
+                            GLES20.GL_RGB, GLES20.GL_UNSIGNED_BYTE, buff);
+                    GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+                    mDirty = false;
+                }
             }
         }
     }
