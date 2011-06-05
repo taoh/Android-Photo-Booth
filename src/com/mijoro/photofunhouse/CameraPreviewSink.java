@@ -38,7 +38,7 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
     }
     
     public CameraPreviewSink() {
-        initCamera(CameraInfo.CAMERA_FACING_BACK);
+        initCamera(CameraInfo.CAMERA_FACING_FRONT);
     }
     
     public void switchCamera() {
