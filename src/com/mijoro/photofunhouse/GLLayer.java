@@ -98,7 +98,6 @@ public class GLLayer extends GLSurfaceView implements Renderer {
                             mTouchY = event.getY() / getHeight();
                         }
                     } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                        System.out.println("UP AND MOVING IS " + moving);
                         if (!moving) toggleOverview();
                         moving = false;
                         return false;
