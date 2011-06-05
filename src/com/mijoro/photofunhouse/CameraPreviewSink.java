@@ -20,12 +20,14 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
 
     byte[] cameraBytes = new byte[0];
     byte[] rgbBytes = new byte[0];
+    byte[] rgbBytes2;
     
     Size mPreviewSize;
     TextureRatio mTextureRatio;
     public int textureSize = -1;
     
-    ByteBuffer rgbBuffer;
+    ByteBuffer rgbBuffer, rgbBuffer2;
+    boolean useOtherBuffer = false;
 
     public class TextureRatio {
         public float width, height;
@@ -36,7 +38,7 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
     }
     
     public CameraPreviewSink() {
-        initCamera(CameraInfo.CAMERA_FACING_FRONT);
+        initCamera(CameraInfo.CAMERA_FACING_BACK);
     }
     
     public void switchCamera() {
@@ -65,6 +67,8 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
         cameraBytes = new byte[bytelen];
         rgbBytes = new byte[mPreviewSize.width * mPreviewSize.height * 3];
         rgbBuffer = ByteBuffer.wrap(rgbBytes);
+        rgbBytes2 = new byte[mPreviewSize.width * mPreviewSize.height * 3];
+        rgbBuffer2 = ByteBuffer.wrap(rgbBytes2);
         
         mCamera.addCallbackBuffer(cameraBytes);
         mCamera.startPreview();
@@ -76,8 +80,10 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
     }
 
     public void onPreviewFrame(byte[] yuvs, Camera camera) {
-        GLLayer.decode(yuvs, mPreviewSize.width, mPreviewSize.height, textureSize, rgbBytes);
+        byte[] rgb = useOtherBuffer ? rgbBytes2 : rgbBytes;
+        GLLayer.decode(yuvs, mPreviewSize.width, mPreviewSize.height, textureSize, rgb);
         mCamera.addCallbackBuffer(yuvs);
+        useOtherBuffer = !useOtherBuffer;
     }
     
     public void bindTexture() {
@@ -95,8 +101,9 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
                             null);
                     initialized = true;
                 }
+                ByteBuffer buff = useOtherBuffer ? rgbBuffer : rgbBuffer2;
                 GLES20.glTexSubImage2D(GLES20.GL_TEXTURE_2D, 0, 0, 0, mPreviewSize.width, mPreviewSize.height,
-                        GLES20.GL_RGB, GLES20.GL_UNSIGNED_BYTE, rgbBuffer);
+                        GLES20.GL_RGB, GLES20.GL_UNSIGNED_BYTE, buff);
                 GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
             }
         }
