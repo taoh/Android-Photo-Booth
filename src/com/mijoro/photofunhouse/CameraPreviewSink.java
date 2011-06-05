@@ -38,7 +38,7 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
     }
     
     public CameraPreviewSink() {
-        initCamera(CameraInfo.CAMERA_FACING_FRONT);
+        initCamera(CameraInfo.CAMERA_FACING_BACK);
     }
     
     public void switchCamera() {
@@ -73,6 +73,9 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
         mCamera.addCallbackBuffer(cameraBytes);
         mCamera.startPreview();
         mCamera.setPreviewCallbackWithBuffer(this);
+        
+        cameraTexture = null;
+        initialized = false;
     }
 
     public TextureRatio getTextureRatio() {
