@@ -3,11 +3,14 @@ package com.mijoro.photofunhouse.shaders;
 import java.nio.FloatBuffer;
 
 import com.mijoro.photofunhouse.CameraPreviewSink.TextureRatio;
+import com.mijoro.photofunhouse.R;
+import com.mijoro.photofunhouse.Utilities;
 
+import android.content.Context;
 import android.opengl.GLES20;
 import android.util.Log;
 
-public abstract class ShaderProgram {
+public class ShaderProgram {
     private static final int TRIANGLE_VERTICES_DATA_POS_OFFSET = 0;
     private static final int TRIANGLE_VERTICES_DATA_UV_OFFSET = 3;
     private static final int FLOAT_SIZE_BYTES = 4;
@@ -22,6 +25,15 @@ public abstract class ShaderProgram {
 
     public ShaderProgram(TextureRatio ratio) {
         mTexRatio = ratio;
+    }
+    
+    public ShaderProgram(TextureRatio ratio, String fshader) {
+        mTexRatio = ratio;
+        initialize(fshader);
+    }
+    
+    public static String buildFShader(Context c, int id) {
+        return PROGRAM_HEADER + Utilities.readRawFile(c, id);
     }
     
     protected void initialize(String fShader){
@@ -129,7 +141,7 @@ public abstract class ShaderProgram {
         }
     }
     
-    protected final String mVertexShader =
+    protected static final String mVertexShader =
         "uniform mat4 uMVPMatrix;\n" +
         "uniform float uTime;\n" +
         "attribute vec4 aPosition;\n" +
@@ -140,7 +152,7 @@ public abstract class ShaderProgram {
         "  vTextureCoord = vec2(aTextureCoord.x, 1.0-aTextureCoord.y);\n" +
         "}\n";
     
-    protected final String PROGRAM_HEADER =
+    public static final String PROGRAM_HEADER =
         "precision mediump float;\n" +
         "varying vec2 vTextureCoord;\n" +
         "uniform sampler2D sTexture;\n" +

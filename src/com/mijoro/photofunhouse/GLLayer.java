@@ -18,6 +18,7 @@ import com.mijoro.photofunhouse.shaders.KaleidomirrorShader;
 import com.mijoro.photofunhouse.shaders.MirrorShader;
 import com.mijoro.photofunhouse.shaders.PinchShader;
 import com.mijoro.photofunhouse.shaders.ShaderProgram;
+import com.mijoro.photofunhouse.shaders.TimerShader;
 import com.mijoro.photofunhouse.shaders.TrippyShader;
 
 import android.content.Context;
@@ -143,7 +144,6 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     }
     
     public void toggleOverview() {
-        System.out.println("TOGGLING OVERVIEW");
         mAnimationStartTime = System.currentTimeMillis();
         mOverviewMode = !mOverviewMode;
     }
@@ -231,15 +231,16 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     }
 
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-        mPrograms = new ShaderProgram[7];
+        mPrograms = new ShaderProgram[9];
         mPrograms[0] = new PinchShader(mTexRatio);
         mPrograms[1] = new InverseShader(mTexRatio);
         mPrograms[2] = new DuotoneShader(mTexRatio);
-        mPrograms[3] = new MirrorShader(mTexRatio);
+        mPrograms[3] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.mirror));
         mPrograms[4] = new TrippyShader(mTexRatio);
         mPrograms[5] = new BulgeShader(mTexRatio);
         mPrograms[6] = new KaleidomirrorShader(mTexRatio);
-        
+        mPrograms[7] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.pixellate));
+        mPrograms[8] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.horizshift));
         mProgram = mPrograms[0];
 
         
