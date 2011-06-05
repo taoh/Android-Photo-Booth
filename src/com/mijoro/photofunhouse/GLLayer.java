@@ -46,8 +46,14 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     
     private long mAnimationStartTime = 0;
     
+    private PhotoListener mPhotoListener;
+    
     static {
         System.loadLibrary("yuv420sp2rgb");
+    }
+    
+    public static interface PhotoListener {
+        public void photoTaken(Bitmap b);
     }
 
     /**
@@ -131,6 +137,10 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         setTextureRatio(mTexRatio.width, mTexRatio.height);
     }
     
+    public void setPhotoListener(PhotoListener l) {
+        mPhotoListener = l;
+    }
+    
     @Override
     public void onPause() {
         sink.onPause();
@@ -158,7 +168,12 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         if (mProgramCounter < 0) mProgramCounter = mPrograms.length - 1;
         mProgram = mPrograms[mProgramCounter]; 
     }
+    
     public void saveImage() {
+        mSaveNextFrame = true;
+    }
+    
+    private void glSaveImage() {
         int w = mWidth;
         int h = mHeight;
         int b[]=new int[w*h];
@@ -179,12 +194,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
              }
         }                  
         Bitmap sb = Bitmap.createBitmap(bt, w, h, Bitmap.Config.ARGB_8888);
-        try {
-            FileOutputStream out = new FileOutputStream("/sdcard/1.png");
-            sb.compress(Bitmap.CompressFormat.PNG, 90, out);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        mPhotoListener.photoTaken(sb);
     }
     
     public void onDrawFrame(GL10 gl) {
@@ -219,7 +229,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         }
         
         if (mSaveNextFrame) {
-            saveImage();
+            glSaveImage();
             mSaveNextFrame = false;
         }
     }
@@ -243,7 +253,6 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         mPrograms[8] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.horizshift));
         mProgram = mPrograms[0];
 
-        
         Matrix.setIdentityM(mMVPMatrix, 0);
     }
     
