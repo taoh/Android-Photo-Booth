@@ -5,7 +5,7 @@ import java.io.FileOutputStream;
 import java.text.DateFormat;
 import java.util.Date;
 
-import com.mijoro.photofunhouse.GLLayer.PhotoListener;
+import com.mijoro.photofunhouse.GLLayer.HostApplication;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -24,8 +24,9 @@ import android.view.animation.Animation;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.ImageButton;
+import android.widget.Toast;
 
-public class FunhouseActivity extends Activity implements PhotoListener {
+public class FunhouseActivity extends Activity implements HostApplication {
 	private GLLayer glView;
 	private ViewGroup mToolbar;
 	private boolean mToolbarShown = false;
@@ -53,7 +54,7 @@ public class FunhouseActivity extends Activity implements PhotoListener {
         
         CameraPreviewSink sink = new CameraPreviewSink();
         glView.setCameraPreviewSink(sink);
-        glView.setPhotoListener(this);
+        glView.setHostApplication(this);
         
         mShowAnimation = new AlphaAnimation(0.2f, 1.0f);
         mShowAnimation.setFillAfter(true);
@@ -88,21 +89,38 @@ public class FunhouseActivity extends Activity implements PhotoListener {
     
     @Override
     protected void onPause() {
-        glView.onPause();
         super.onPause();
+        glView.onPause();
+        
     }
     
     @Override
     protected void onResume() {
-        glView.onResume();
         super.onResume();
+        glView.onResume();
+        
     }
+    
+    private Runnable mSDCardErrorRunnable = new Runnable() {
+        public void run() {
+            String message = "Please Unmount the SD Card before taking pictures.";
+            Toast t = Toast.makeText(FunhouseActivity.this, message, 3000);
+            t.show();
+        }
+    };
 
     public void photoTaken(final Bitmap b) {
+        String state = Environment.getExternalStorageState();
+        if (!Environment.MEDIA_MOUNTED.equals(state)) {
+            mUIHandler.post(mSDCardErrorRunnable);
+            return;
+            
+        }
         mUIHandler.post(new Runnable() {
             public void run() {
                 Bitmap smallBitmap = Bitmap.createScaledBitmap(b, 70, 70, true);
                 mLastPicButton.setImageBitmap(smallBitmap);
+                mLastPicButton.setVisibility(View.VISIBLE);
             }
         });
 
@@ -119,9 +137,12 @@ public class FunhouseActivity extends Activity implements PhotoListener {
             file.createNewFile();
             FileOutputStream out = new FileOutputStream(file);
             b.compress(Bitmap.CompressFormat.JPEG, 90, out);
-            System.out.println("You know i wrote that file to " + file);
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public void overviewModeShowing(boolean showing) {
+        mToolbar.setVisibility(showing ? View.GONE : View.VISIBLE);
     }
 }

@@ -91,9 +91,12 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
     public void onPause() {
         mCamera.stopPreview();
         mCamera.release();
+        mCamera = null;
     }
     
     public void onResume() {
+        if (mCamera == null)
+            initCamera();
     }
 
 }

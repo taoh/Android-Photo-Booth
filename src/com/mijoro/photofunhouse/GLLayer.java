@@ -1,7 +1,6 @@
 
 package com.mijoro.photofunhouse;
 
-import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -15,10 +14,8 @@ import com.mijoro.photofunhouse.shaders.BulgeShader;
 import com.mijoro.photofunhouse.shaders.DuotoneShader;
 import com.mijoro.photofunhouse.shaders.InverseShader;
 import com.mijoro.photofunhouse.shaders.KaleidomirrorShader;
-import com.mijoro.photofunhouse.shaders.MirrorShader;
 import com.mijoro.photofunhouse.shaders.PinchShader;
 import com.mijoro.photofunhouse.shaders.ShaderProgram;
-import com.mijoro.photofunhouse.shaders.TimerShader;
 import com.mijoro.photofunhouse.shaders.TrippyShader;
 
 import android.content.Context;
@@ -46,14 +43,15 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     
     private long mAnimationStartTime = 0;
     
-    private PhotoListener mPhotoListener;
+    private HostApplication mHostApplication;
     
     static {
         System.loadLibrary("yuv420sp2rgb");
     }
     
-    public static interface PhotoListener {
+    public static interface HostApplication {
         public void photoTaken(Bitmap b);
+        public void overviewModeShowing(boolean showing);
     }
 
     /**
@@ -137,8 +135,9 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         setTextureRatio(mTexRatio.width, mTexRatio.height);
     }
     
-    public void setPhotoListener(PhotoListener l) {
-        mPhotoListener = l;
+    public void setHostApplication(HostApplication l) {
+        mHostApplication = l;
+        mHostApplication.overviewModeShowing(mOverviewMode);
     }
     
     @Override
@@ -156,6 +155,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     public void toggleOverview() {
         mAnimationStartTime = System.currentTimeMillis();
         mOverviewMode = !mOverviewMode;
+        mHostApplication.overviewModeShowing(mOverviewMode);
     }
     
     public void nextProgram() {
@@ -194,7 +194,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
              }
         }                  
         Bitmap sb = Bitmap.createBitmap(bt, w, h, Bitmap.Config.ARGB_8888);
-        mPhotoListener.photoTaken(sb);
+        mHostApplication.photoTaken(sb);
     }
     
     public void onDrawFrame(GL10 gl) {
