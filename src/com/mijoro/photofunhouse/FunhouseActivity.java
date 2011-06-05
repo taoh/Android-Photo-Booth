@@ -19,8 +19,6 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.animation.AlphaAnimation;
-import android.view.animation.Animation;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.ImageButton;
@@ -29,11 +27,10 @@ import android.widget.Toast;
 public class FunhouseActivity extends Activity implements HostApplication {
 	private GLLayer glView;
 	private ViewGroup mToolbar;
-	private boolean mToolbarShown = false;
-	private Animation mShowAnimation, mHideAnimation;
 	ImageButton mLastPicButton;
 	private String mLastImageURI;
 	private Handler mUIHandler;
+	private CameraPreviewSink mCameraSink;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -52,16 +49,9 @@ public class FunhouseActivity extends Activity implements HostApplication {
             }
         });
         
-        CameraPreviewSink sink = new CameraPreviewSink();
-        glView.setCameraPreviewSink(sink);
+        mCameraSink = new CameraPreviewSink();
+        glView.setCameraPreviewSink(mCameraSink);
         glView.setHostApplication(this);
-        
-        mShowAnimation = new AlphaAnimation(0.2f, 1.0f);
-        mShowAnimation.setFillAfter(true);
-        mShowAnimation.setDuration(200);
-        mHideAnimation = new AlphaAnimation(1.0f, 0.2f);
-        mHideAnimation.setFillAfter(true);
-        mHideAnimation.setDuration(200);
         
         ImageButton cameraButton = (ImageButton)findViewById(R.id.camera_button);
         cameraButton.setOnClickListener(new OnClickListener() {
@@ -83,6 +73,8 @@ public class FunhouseActivity extends Activity implements HostApplication {
         if (item.getItemId() == R.id.next_filter) {
             glView.nextProgram();
             return true;
+        } else if (item.getItemId() == R.id.switch_camera) {
+            mCameraSink.switchCamera();
         }
         return super.onOptionsItemSelected(item);
     }
@@ -114,7 +106,6 @@ public class FunhouseActivity extends Activity implements HostApplication {
         if (!Environment.MEDIA_MOUNTED.equals(state)) {
             mUIHandler.post(mSDCardErrorRunnable);
             return;
-            
         }
         mUIHandler.post(new Runnable() {
             public void run() {

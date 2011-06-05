@@ -11,6 +11,8 @@ import android.opengl.GLES20;
 
 public class CameraPreviewSink implements Camera.PreviewCallback {
     private Camera mCamera;
+    private int mCameraId;
+
     float texRatioHeight = 1.0f;
     float texRatioWidth = 1.0f;
     boolean initialized = false;
@@ -34,11 +36,23 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
     }
     
     public CameraPreviewSink() {
-        initCamera();
+        initCamera(CameraInfo.CAMERA_FACING_FRONT);
     }
     
-    private void initCamera() {
-        mCamera = Camera.open(CameraInfo.CAMERA_FACING_FRONT);
+    public void switchCamera() {
+        int newID = CameraInfo.CAMERA_FACING_FRONT == mCameraId ? 
+                CameraInfo.CAMERA_FACING_BACK : CameraInfo.CAMERA_FACING_FRONT;
+        initCamera(newID);
+    }
+    
+    private void initCamera(int cameraId) {
+        if (mCamera != null) {
+            mCamera.stopPreview();
+            mCamera.release();
+            mCamera = null;
+        }
+        mCameraId = cameraId;
+        mCamera = Camera.open(cameraId);
         Camera.Parameters p = mCamera.getParameters();
         p.setPreviewFormat(ImageFormat.NV21);
         Size lowestSetting = p.getSupportedPreviewSizes().get(1);
@@ -96,7 +110,7 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
     
     public void onResume() {
         if (mCamera == null)
-            initCamera();
+            initCamera(mCameraId);
     }
 
 }

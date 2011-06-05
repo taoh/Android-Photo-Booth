@@ -2,4 +2,5 @@
 <resources>
     <string name="app_name">Photo Funhouse</string>
     <string name="next_filter">Next Filter</string>
+    <string name="switch_camera">Switch Camera</string>
 </resources>

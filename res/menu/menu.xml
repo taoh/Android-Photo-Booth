@@ -3,4 +3,6 @@
   xmlns:android="http://schemas.android.com/apk/res/android">
   <item android:id="@+id/next_filter"
           android:title="@string/next_filter" />
+  <item android:id="@+id/switch_camera"
+  		android:title="@string/switch_camera" android:visible="false" />
 </menu>
