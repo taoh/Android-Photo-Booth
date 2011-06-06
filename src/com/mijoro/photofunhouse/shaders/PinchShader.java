@@ -12,11 +12,10 @@ public class PinchShader extends ShaderProgram {
         muCenterHandle = getUniformLoc("uCenter");
     }
     
-    
     @Override
-    protected void setupExtraVariables(float time, float touchX, float touchY) {
-        super.setupExtraVariables(time, touchX, touchY);
-        GLES20.glUniform2f(muCenterHandle, touchY, touchX);
+    protected void setupExtraVariables(float time, float level) {
+        super.setupExtraVariables(time, level);
+        GLES20.glUniform2f(muCenterHandle, 0.5f, 0.5f);
     }
 
     private final String mFragmentShaderPinch =

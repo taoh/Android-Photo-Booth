@@ -21,6 +21,7 @@ public class ShaderProgram {
     private int muMVPMatrixHandle;
     private int muSizeHandle;
     private int muTimeHandle;
+
     private TextureRatio mTexRatio;
 
     public ShaderProgram(TextureRatio ratio) {
@@ -36,6 +37,10 @@ public class ShaderProgram {
         return PROGRAM_HEADER + Utilities.readRawFile(c, id);
     }
     
+    public boolean usesValueSlider() {
+        return false;
+    }
+    
     protected void initialize(String fShader){
         mProgram = createProgram(mVertexShader, fShader);
         maPositionHandle = getAttribLoc("aPosition");
@@ -45,11 +50,11 @@ public class ShaderProgram {
         muTimeHandle = getUniformLoc("uTime");
     }
     
-    protected void setupExtraVariables(float time, float touchX, float touchY) {}
+    protected void setupExtraVariables(float time, float level) {}
     
-    public void drawQuad(FloatBuffer buffer, float[] mvpMatrix, float time, float touchX, float touchY) {
+    public void drawQuad(FloatBuffer buffer, float[] mvpMatrix, float time, float level) {
         GLES20.glUseProgram(mProgram);
-        setupExtraVariables(time, touchX, touchY);
+        setupExtraVariables(time, level);
         buffer.position(TRIANGLE_VERTICES_DATA_POS_OFFSET);
         GLES20.glVertexAttribPointer(maPositionHandle, 3, GLES20.GL_FLOAT, false,
                 TRIANGLE_VERTICES_DATA_STRIDE_BYTES, buffer);

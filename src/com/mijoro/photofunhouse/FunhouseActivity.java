@@ -17,11 +17,16 @@ import android.os.Handler;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.View.OnTouchListener;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
 import android.widget.ImageButton;
+import android.widget.SeekBar;
 import android.widget.Toast;
 
 public class FunhouseActivity extends Activity implements HostApplication {
@@ -31,6 +36,8 @@ public class FunhouseActivity extends Activity implements HostApplication {
 	private String mLastImageURI;
 	private Handler mUIHandler;
 	private CameraPreviewSink mCameraSink;
+	private Animation mHideSlider, mShowSlider;
+	private SeekBar mValueSlider;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,10 +66,30 @@ public class FunhouseActivity extends Activity implements HostApplication {
                 glView.saveImage();
             }
         });
+        
+        mValueSlider = (SeekBar)findViewById(R.id.value_slider);
+        mValueSlider.setOnSeekBarChangeListener(glView);
+        mHideSlider = new AlphaAnimation(1.0f, 0.2f);
+        mShowSlider = new AlphaAnimation(0.2f, 1.0f);
+        mHideSlider.setFillAfter(true);
+        mHideSlider.setDuration(1000);
+        mShowSlider.setDuration(1000);
+        mShowSlider.setFillAfter(true);
+        mValueSlider.startAnimation(mHideSlider);
+        mValueSlider.setOnTouchListener(new OnTouchListener() {
+            public boolean onTouch(View v, MotionEvent event) {
+                if (event.getAction() == MotionEvent.ACTION_DOWN)
+                    mValueSlider.startAnimation(mShowSlider);
+                else if (event.getAction() == MotionEvent.ACTION_UP)
+                    mValueSlider.startAnimation(mHideSlider);
+                return false;
+            }
+        });
     }
     
     public void showSlider(boolean show) {
-        
+        mValueSlider.setVisibility(show ? View.VISIBLE : View.GONE);
+        mValueSlider.setProgress(50);
     }
     
     @Override

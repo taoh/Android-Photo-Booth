@@ -27,8 +27,10 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.SeekBar;
+import android.widget.SeekBar.OnSeekBarChangeListener;
 
-public class GLLayer extends GLSurfaceView implements Renderer {
+public class GLLayer extends GLSurfaceView implements Renderer, OnSeekBarChangeListener {
     private static final float ANIMATION_DURATION = 600.0f;
 
     private CameraPreviewSink sink;
@@ -39,7 +41,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     private float mTime = 0.0f;
     private float mTouchX = 0.5f;
     private float mTouchY = 0.5f;
-    
+    private float mLevel = 0.5f;
     private long mAnimationStartTime = 0;
     
     private HostApplication mHostApplication;
@@ -125,7 +127,9 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         mProgram = mPrograms[mProgramCounter];
         mTouchX = 0.5f;
         mTouchY = 0.5f;
-        toggleOverview();
+        mLevel = 0.5f;
+        mHostApplication.showSlider(mProgram.usesValueSlider());
+        setOverviewMode(false);
     }
     
     public void setCameraPreviewSink(CameraPreviewSink sink) {
@@ -212,7 +216,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         sink.bindTexture();
         if (!mOverviewMode) {
             Matrix.setIdentityM(mMVPMatrix, 0);
-            mProgram.drawQuad(mainQuadVertices, mMVPMatrix, mTime, mTouchX, mTouchY);
+            mProgram.drawQuad(mainQuadVertices, mMVPMatrix, mTime, mLevel);
         } else {
             long time = System.currentTimeMillis();
             float percent = Math.min((time - mAnimationStartTime) / ANIMATION_DURATION, 1.0f);
@@ -221,7 +225,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
             float x = -2.0f + 2.0f * (mProgramCounter % 3);
             float y = 2.0f - 2.0f * (float)(Math.floor(mProgramCounter / 3));
             Matrix.translateM(mMVPMatrix, 0, x*percent, y*percent, 0.0f);
-            mProgram.drawQuad(mainQuadVertices, mMVPMatrix, mTime, mTouchX, mTouchY);
+            mProgram.drawQuad(mainQuadVertices, mMVPMatrix, mTime, mLevel);
             for (int i = 0; i < mPrograms.length; ++i) {
                 if (i == mProgramCounter) continue;
                 Matrix.setIdentityM(mMVPMatrix, 0);
@@ -229,7 +233,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
                 x = -2.0f + 2.0f * (i % 3);
                 y = 2.0f - 2.0f * (float)(Math.floor(i / 3));
                 Matrix.translateM(mMVPMatrix, 0, x, y, 0.0f);
-                mPrograms[i].drawQuad(mainQuadVertices, mMVPMatrix, mTime, mTouchX, mTouchY);
+                mPrograms[i].drawQuad(mainQuadVertices, mMVPMatrix, mTime, mLevel);
             }
         }
         
@@ -372,4 +376,10 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     private int mProgramCounter = 0;
 
     private static String TAG = "Photo Funhouse";
+   
+    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+        mLevel = (float)progress / 100.0f;
+    }
+    public void onStartTrackingTouch(SeekBar seekBar) {}
+    public void onStopTrackingTouch(SeekBar seekBar) {}
 }

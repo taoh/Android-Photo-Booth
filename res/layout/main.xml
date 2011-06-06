@@ -9,11 +9,13 @@
 		android:layout_gravity="bottom">
 		<ImageButton android:id="@+id/camera_button"
 			android:layout_width="wrap_content" android:layout_height="wrap_content"
-			android:src="@drawable/photo" android:background="@null" />
+			android:src="@drawable/photo" android:background="@null" android:layout_alignParentBottom="true"/>
 		<ImageButton android:id="@+id/last_pic_button"
 			android:visibility="gone"
 			android:background="@null" android:layout_width="55dp"
 			android:layout_height="70dp" android:scaleType="fitXY"
-			android:layout_alignParentRight="true" />
+			android:layout_alignParentRight="true" android:layout_alignParentBottom="true" />
+		<SeekBar android:id="@+id/value_slider" android:layout_height="wrap_content" android:paddingLeft="170dp" android:paddingRight="170dp" 
+		android:layout_width="match_parent" android:layout_alignParentBottom="true" ></SeekBar>
 	</RelativeLayout>
 </FrameLayout>

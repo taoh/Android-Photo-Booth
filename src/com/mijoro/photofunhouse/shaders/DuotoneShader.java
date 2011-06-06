@@ -13,9 +13,14 @@ public class DuotoneShader extends ShaderProgram {
     }
     
     @Override
-    protected void setupExtraVariables(float time, float touchX, float touchY) {
-        super.setupExtraVariables(time, touchX, touchY);
-        GLES20.glUniform1f(muLevelHandle, touchX);
+    public boolean usesValueSlider() {
+        return true;
+    }
+    
+    @Override
+    protected void setupExtraVariables(float time, float level) {
+        super.setupExtraVariables(time, level);
+        GLES20.glUniform1f(muLevelHandle, level);
     }
     
     private final String mFragmentShaderDuotone =
