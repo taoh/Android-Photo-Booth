@@ -16,8 +16,6 @@ import com.mijoro.photofunhouse.shaders.InverseShader;
 import com.mijoro.photofunhouse.shaders.KaleidomirrorShader;
 import com.mijoro.photofunhouse.shaders.PinchShader;
 import com.mijoro.photofunhouse.shaders.ShaderProgram;
-import com.mijoro.photofunhouse.shaders.TimerShader;
-import com.mijoro.photofunhouse.shaders.TrippyShader;
 
 import android.content.Context;
 import android.graphics.Bitmap;
