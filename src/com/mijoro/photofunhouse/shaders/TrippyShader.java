@@ -20,7 +20,6 @@ public class TrippyShader extends ShaderProgram {
 
     private final String mFragmentShaderTrippy =
         PROGRAM_HEADER +
-        "  uniform float uTime;\n" +
         "  const float C_PI    = 3.1415;\n" +
         "  const float C_2PI   = 2.0 * C_PI;\n" +
         "  const float C_2PI_I = 1.0 / (2.0 * C_PI);\n" +

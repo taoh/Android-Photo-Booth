@@ -16,6 +16,7 @@ import com.mijoro.photofunhouse.shaders.InverseShader;
 import com.mijoro.photofunhouse.shaders.KaleidomirrorShader;
 import com.mijoro.photofunhouse.shaders.PinchShader;
 import com.mijoro.photofunhouse.shaders.ShaderProgram;
+import com.mijoro.photofunhouse.shaders.TimerShader;
 import com.mijoro.photofunhouse.shaders.TrippyShader;
 
 import android.content.Context;
@@ -244,11 +245,11 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         mPrograms[1] = new InverseShader(mTexRatio);
         mPrograms[2] = new DuotoneShader(mTexRatio);
         mPrograms[3] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.mirror));
-        mPrograms[4] = new TrippyShader(mTexRatio);
+        mPrograms[4] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.trippy));
         mPrograms[5] = new BulgeShader(mTexRatio);
         mPrograms[6] = new KaleidomirrorShader(mTexRatio);
         mPrograms[0] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.normal));
-        mPrograms[8] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.horizshift));
+        mPrograms[8] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.twist));
         mProgram = mPrograms[0];
 
         Matrix.setIdentityM(mMVPMatrix, 0);

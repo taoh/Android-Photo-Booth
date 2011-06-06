@@ -1,4 +1,3 @@
-uniform float uTime;
 float rand(float co){
     return fract(sin(co) * 43758.5453);
 }

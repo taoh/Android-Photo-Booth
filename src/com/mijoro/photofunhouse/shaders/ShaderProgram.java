@@ -3,7 +3,6 @@ package com.mijoro.photofunhouse.shaders;
 import java.nio.FloatBuffer;
 
 import com.mijoro.photofunhouse.CameraPreviewSink.TextureRatio;
-import com.mijoro.photofunhouse.R;
 import com.mijoro.photofunhouse.Utilities;
 
 import android.content.Context;
@@ -21,6 +20,7 @@ public class ShaderProgram {
     private int maTextureHandle;
     private int muMVPMatrixHandle;
     private int muSizeHandle;
+    private int muTimeHandle;
     private TextureRatio mTexRatio;
 
     public ShaderProgram(TextureRatio ratio) {
@@ -42,6 +42,7 @@ public class ShaderProgram {
         maTextureHandle = getAttribLoc("aTextureCoord");
         muMVPMatrixHandle = getUniformLoc("uMVPMatrix");
         muSizeHandle = getUniformLoc("uSize");
+        muTimeHandle = getUniformLoc("uTime");
     }
     
     protected void setupExtraVariables(float time, float touchX, float touchY) {}
@@ -62,6 +63,7 @@ public class ShaderProgram {
         GLES20.glEnableVertexAttribArray(maTextureHandle);
         checkGlError("glEnableVertexAttribArray maTextureHandle");
         GLES20.glUniform2f(muSizeHandle, mTexRatio.width, mTexRatio.height);
+        if (muTimeHandle != -1) GLES20.glUniform1f(muTimeHandle, time);
         GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, mvpMatrix, 0);
         checkGlError("Before GlDrawArrays");
         GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6);
@@ -71,9 +73,6 @@ public class ShaderProgram {
     protected int getUniformLoc(String name) {
         int handle = GLES20.glGetUniformLocation(mProgram, name);
         checkGlError("glGetUniformLocation " + name);
-        if (handle == -1) {
-            throw new RuntimeException("Could not get uniform location for " + name);
-        }
         return handle;
     }
     
@@ -157,7 +156,7 @@ public class ShaderProgram {
         "varying vec2 vTextureCoord;\n" +
         "uniform sampler2D sTexture;\n" +
         "uniform vec2 uSize;\n" + // The size of the top left corner of the actual image in the texture.  Dimensions should be normalized between 0 and these values.
-        //"uniform float uTime;\n" +
+        "uniform float uTime;\n" +
         "vec2 norm(vec2 inSize) {\n" +
         "  return inSize / uSize;\n" +
         "}\n" +
