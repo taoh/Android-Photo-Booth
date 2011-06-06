@@ -75,6 +75,7 @@ public class FunhouseActivity extends Activity implements HostApplication {
             return true;
         } else if (item.getItemId() == R.id.switch_camera) {
             mCameraSink.switchCamera();
+            glView.setFrontFacing(mCameraSink.isFrontFacing());
         }
         return super.onOptionsItemSelected(item);
     }

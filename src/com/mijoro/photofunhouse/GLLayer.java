@@ -246,8 +246,8 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         mPrograms[4] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.trippy));
         mPrograms[5] = new BulgeShader(mTexRatio);
         mPrograms[6] = new KaleidomirrorShader(mTexRatio);
-        mPrograms[0] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.normal));
-        mPrograms[8] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.twist));
+        mPrograms[0] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.horizshift));
+        mPrograms[8] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.pixellate));
         mProgram = mPrograms[0];
 
         Matrix.setIdentityM(mMVPMatrix, 0);
@@ -259,6 +259,16 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         }
         for (int index : mTriangleWidths) {
             mainQuadVertices.put(index, width);
+        }
+    }
+    
+    public void setFrontFacing(boolean frontFacing) {
+        float pos = frontFacing ? 1.0f : -1.0f;
+        for (int index : mNegativeTriangleValues ) {
+            mainQuadVertices.put(index, pos);
+        }
+        for (int index : mPositiveTriangleValues) {
+            mainQuadVertices.put(index, pos * -1.0f);
         }
     }
 
@@ -331,18 +341,20 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     private final float[] mTriangleVerticesData = {
             // X,   Y,   Z,  U,    V
             -1.0f, -1.0f, 0, 0.0f, 0.0f,// 0  1  2  3  4
-            1.0f, -1.0f, 0, 0.0f, 1.0f,// 5  6  7  8  9
+            1.0f, -1.0f, 0, 1.0f, 0.0f,// 5  6  7  8  9
             1.0f, 1.0f, 0, 1.0f, 1.0f,// 10 11 12 13 14
 
             -1.0f, -1.0f, 0,  0.0f, 0.0f,// 15 16 17 18 19
-            -1.0f, 1.0f,  0, 1.0f, 0.0f,// 20 21 22 23 24
+            -1.0f, 1.0f,  0, 0.0f, 1.0f,// 20 21 22 23 24
             1.0f, 1.0f,  0, 1.0f, 1.0f,// 25 26 27 28 29
     };
     // Indices of the widths and heights to update in the vertex data buffer in order to set
     // the texture bounds since we need to use a power of two texture, but have non-power-of-two
     // images.
-    private int[] mTriangleHeights = {4 ,19, 24};
-    private int[] mTriangleWidths = {13, 23, 28};
+    private int[] mTriangleHeights = {4, 9, 19};
+    private int[] mTriangleWidths = {8, 13, 28};
+    private int[] mPositiveTriangleValues = {5, 10, 25};
+    private int[] mNegativeTriangleValues = {0, 15, 20};
 
     private FloatBuffer mainQuadVertices;
 

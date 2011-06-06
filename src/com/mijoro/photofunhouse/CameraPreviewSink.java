@@ -48,6 +48,10 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
         initCamera(newID);
     }
     
+    public boolean isFrontFacing() {
+        return mCameraId == CameraInfo.CAMERA_FACING_FRONT;
+    }
+    
     private void initCamera(int cameraId) {
         if (mCamera != null) {
             mCamera.stopPreview();
@@ -56,7 +60,10 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
         }
         mCameraId = cameraId;
         mCamera = Camera.open(cameraId);
+        
         Camera.Parameters p = mCamera.getParameters();
+        if (cameraId == CameraInfo.CAMERA_FACING_BACK) p.setRotation(270);
+        System.out.println("Preview framerate: " + p.getPreviewFrameRate());
         p.setPreviewFormat(ImageFormat.NV21);
         Size lowestSetting = p.getSupportedPreviewSizes().get(1);
         p.setPreviewSize(lowestSetting.width, lowestSetting.height);
@@ -86,7 +93,7 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
     public void onPreviewFrame(byte[] yuvs, Camera camera) {
         byte[] rgb = useOtherBuffer ? rgbBytes2 : rgbBytes;
         GLLayer.decode(yuvs, mPreviewSize.width, mPreviewSize.height, textureSize, rgb);
-        mCamera.addCallbackBuffer(yuvs);
+        if (mCamera != null) mCamera.addCallbackBuffer(yuvs);
         mDirty = true;
         useOtherBuffer = !useOtherBuffer;
     }
