@@ -108,6 +108,7 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex);
             if (cameraBytes.length > 0) {
                 if (!initialized) {
+                    // todo: i wish there was a better way to reliably clear out a texture.
                     Bitmap b = Bitmap.createBitmap(textureSize, textureSize, Bitmap.Config.RGB_565);
                     b.eraseColor(0);
                     GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, b, 0);

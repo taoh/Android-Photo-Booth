@@ -51,6 +51,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     public static interface HostApplication {
         public void photoTaken(Bitmap b);
         public void overviewModeShowing(boolean showing);
+        public void showSlider(boolean show);
     }
 
     /**
@@ -144,9 +145,16 @@ public class GLLayer extends GLSurfaceView implements Renderer {
         super.onPause();
     }
     
+    public void setOverviewMode(boolean overview) {
+        mOverviewMode = overview;
+        mHostApplication.overviewModeShowing(overview);
+    }
+    
     @Override
     public void onResume() {
+        setOverviewMode(true);
         sink.onResume();
+        setFrontFacing(sink.isFrontFacing());
         super.onResume();
     }
     

@@ -61,6 +61,10 @@ public class FunhouseActivity extends Activity implements HostApplication {
         });
     }
     
+    public void showSlider(boolean show) {
+        
+    }
+    
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
