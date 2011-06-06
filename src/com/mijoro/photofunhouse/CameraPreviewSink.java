@@ -3,18 +3,18 @@ package com.mijoro.photofunhouse;
 
 import java.nio.ByteBuffer;
 
+import android.graphics.Bitmap;
 import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
 import android.hardware.Camera.Size;
 import android.opengl.GLES20;
+import android.opengl.GLUtils;
 
 public class CameraPreviewSink implements Camera.PreviewCallback {
     private Camera mCamera;
     private int mCameraId;
 
-    float texRatioHeight = 1.0f;
-    float texRatioWidth = 1.0f;
     boolean initialized = false;
     int[] cameraTexture;
 
@@ -62,7 +62,7 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
         p.setPreviewSize(lowestSetting.width, lowestSetting.height);
         mPreviewSize = lowestSetting;
         textureSize = Utilities.nextPowerOfTwo(Math.max(mPreviewSize.width, mPreviewSize.height));
-        mTextureRatio = new TextureRatio(((float)mPreviewSize.width) / (float)textureSize, (float)mPreviewSize.height / (float)textureSize);
+        mTextureRatio = new TextureRatio(((float)mPreviewSize.width) / (float)textureSize, 1.0f - (float)mPreviewSize.height / (float)textureSize);
         mCamera.setParameters(p);
         int bytelen = (int)(mPreviewSize.width * mPreviewSize.height * ImageFormat.getBitsPerPixel(ImageFormat.NV21) / 8.0f);
         cameraBytes = new byte[bytelen];
@@ -101,9 +101,10 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex);
             if (cameraBytes.length > 0) {
                 if (!initialized) {
-                    GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGB, textureSize,
-                            textureSize, 0, GLES20.GL_RGB, GLES20.GL_UNSIGNED_BYTE ,
-                            null);
+                    Bitmap b = Bitmap.createBitmap(textureSize, textureSize, Bitmap.Config.RGB_565);
+                    b.eraseColor(0);
+                    GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, b, 0);
+                    b.recycle();
                     initialized = true;
                 }
                 if (mDirty) {

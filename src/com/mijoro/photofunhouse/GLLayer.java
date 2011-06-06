@@ -36,7 +36,7 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     private TextureRatio mTexRatio;
     private int mWidth, mHeight;
     private boolean mSaveNextFrame = false;
-    private boolean mOverviewMode = false;
+    private boolean mOverviewMode = true;
     private float mTime = 0.0f;
     private float mTouchX = 0.5f;
     private float mTouchY = 0.5f;
@@ -199,9 +199,8 @@ public class GLLayer extends GLSurfaceView implements Renderer {
     public void onDrawFrame(GL10 gl) {
         mTime += 0.01f;
         GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-        GLES20.glClear( GLES20.GL_DEPTH_BUFFER_BIT | GLES20.GL_COLOR_BUFFER_BIT);
+        GLES20.glClear(GLES20.GL_DEPTH_BUFFER_BIT | GLES20.GL_COLOR_BUFFER_BIT);
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-        checkGlError("glUseProgram");
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         sink.bindTexture();
         if (!mOverviewMode) {
@@ -241,15 +240,15 @@ public class GLLayer extends GLSurfaceView implements Renderer {
 
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         mPrograms = new ShaderProgram[9];
-        mPrograms[0] = new PinchShader(mTexRatio);
+        mPrograms[7] = new PinchShader(mTexRatio);
         mPrograms[1] = new InverseShader(mTexRatio);
         mPrograms[2] = new DuotoneShader(mTexRatio);
         mPrograms[3] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.mirror));
         mPrograms[4] = new TrippyShader(mTexRatio);
         mPrograms[5] = new BulgeShader(mTexRatio);
         mPrograms[6] = new KaleidomirrorShader(mTexRatio);
-        mPrograms[7] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.pixellate));
-        mPrograms[8] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.outline));
+        mPrograms[0] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.normal));
+        mPrograms[8] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.horizshift));
         mProgram = mPrograms[0];
 
         Matrix.setIdentityM(mMVPMatrix, 0);
