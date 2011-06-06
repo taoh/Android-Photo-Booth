@@ -2,6 +2,8 @@ package com.mijoro.photofunhouse;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.text.DateFormat;
 import java.util.Date;
 
@@ -38,6 +40,7 @@ public class FunhouseActivity extends Activity implements HostApplication {
 	private CameraPreviewSink mCameraSink;
 	private Animation mHideSlider, mShowSlider;
 	private SeekBar mValueSlider;
+	private boolean mHasFrontCamera = false;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -85,6 +88,27 @@ public class FunhouseActivity extends Activity implements HostApplication {
                 return false;
             }
         });
+        try {
+            Class<?> cameraClass = Class.forName("android.hardware.Camera");
+            Method numCamsMethod = cameraClass.getMethod("getNumberOfCameras");
+            if (numCamsMethod != null) {
+                int numCams = (Integer)numCamsMethod.invoke(null);
+                if (numCams > 1)
+                    mHasFrontCamera = true;
+            }
+        } catch(ClassNotFoundException e) {
+            
+        } catch (SecurityException e) {
+            e.printStackTrace();
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        }
     }
     
     public void showSlider(boolean show) {
@@ -97,6 +121,9 @@ public class FunhouseActivity extends Activity implements HostApplication {
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.menu, menu);
+        if (!mHasFrontCamera) {
+            menu.getItem(1).setVisible(false);
+        }
         return true;
     }
     

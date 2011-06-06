@@ -1,12 +1,13 @@
 
 package com.mijoro.photofunhouse;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
 import android.graphics.Bitmap;
 import android.graphics.ImageFormat;
 import android.hardware.Camera;
-import android.hardware.Camera.CameraInfo;
 import android.hardware.Camera.Size;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
@@ -29,7 +30,13 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
     private boolean mDirty;
     ByteBuffer rgbBuffer, rgbBuffer2;
     boolean useOtherBuffer = false;
-
+    
+    private Method mOpenCameraMethod;
+    
+    private static final int CAMERA_FACING_FRONT = 1;
+    private static final int CAMERA_FACING_BACK = 0;
+    
+    
     public class TextureRatio {
         public float width, height;
         public TextureRatio(float w, float h) {
@@ -39,17 +46,42 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
     }
     
     public CameraPreviewSink() {
-        initCamera(CameraInfo.CAMERA_FACING_FRONT);
+        try {
+            Class<?> cameraClass = Class.forName("android.hardware.Camera");
+            mOpenCameraMethod = cameraClass.getMethod("open", Integer.TYPE);
+        } catch (SecurityException e) {
+        } catch (NoSuchMethodException e) {
+            // It's ok, probably on Froyo
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        initCamera(CAMERA_FACING_FRONT);
+        
     }
     
     public void switchCamera() {
-        int newID = CameraInfo.CAMERA_FACING_FRONT == mCameraId ? 
-                CameraInfo.CAMERA_FACING_BACK : CameraInfo.CAMERA_FACING_FRONT;
+        int newID = CAMERA_FACING_FRONT == mCameraId ? 
+                CAMERA_FACING_BACK : CAMERA_FACING_FRONT;
         initCamera(newID);
     }
     
     public boolean isFrontFacing() {
-        return mCameraId == CameraInfo.CAMERA_FACING_FRONT;
+        return mCameraId == CAMERA_FACING_FRONT;
+    }
+    
+    private Camera openCamera(int id) {
+        if (mOpenCameraMethod != null) {
+            try {
+                mCameraId = id;
+                return (Camera)mOpenCameraMethod.invoke(null, id);
+            } catch (IllegalArgumentException e) {
+            } catch (IllegalAccessException e) {
+            } catch (InvocationTargetException e) {
+            }
+        }
+        mCameraId = CAMERA_FACING_BACK;
+        return Camera.open();
     }
     
     private void initCamera(int cameraId) {
@@ -58,11 +90,10 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
             mCamera.release();
             mCamera = null;
         }
-        mCameraId = cameraId;
-        mCamera = Camera.open(cameraId);
+        mCamera = openCamera(cameraId);
         
         Camera.Parameters p = mCamera.getParameters();
-        if (cameraId == CameraInfo.CAMERA_FACING_BACK) p.setRotation(270);
+        if (cameraId == CAMERA_FACING_BACK) p.setRotation(270);
         System.out.println("Preview framerate: " + p.getPreviewFrameRate());
         p.setPreviewFormat(ImageFormat.NV21);
         Size lowestSetting = p.getSupportedPreviewSizes().get(1);
