@@ -21,6 +21,7 @@ public class ShaderProgram {
     private int muMVPMatrixHandle;
     private int muSizeHandle;
     private int muTimeHandle;
+    private int muValueHandle;
 
     private TextureRatio mTexRatio;
 
@@ -38,7 +39,7 @@ public class ShaderProgram {
     }
     
     public boolean usesValueSlider() {
-        return false;
+        return muValueHandle != -1;
     }
     
     protected void initialize(String fShader){
@@ -48,6 +49,7 @@ public class ShaderProgram {
         muMVPMatrixHandle = getUniformLoc("uMVPMatrix");
         muSizeHandle = getUniformLoc("uSize");
         muTimeHandle = getUniformLoc("uTime");
+        muValueHandle = getUniformLoc("uValue");
     }
     
     protected void setupExtraVariables(float time, float level) {}
@@ -69,6 +71,7 @@ public class ShaderProgram {
         checkGlError("glEnableVertexAttribArray maTextureHandle");
         GLES20.glUniform2f(muSizeHandle, mTexRatio.width, mTexRatio.height);
         if (muTimeHandle != -1) GLES20.glUniform1f(muTimeHandle, time);
+        if (muValueHandle != -1) GLES20.glUniform1f(muValueHandle, level);
         GLES20.glUniformMatrix4fv(muMVPMatrixHandle, 1, false, mvpMatrix, 0);
         checkGlError("Before GlDrawArrays");
         GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 6);
@@ -162,6 +165,7 @@ public class ShaderProgram {
         "uniform sampler2D sTexture;\n" +
         "uniform vec2 uSize;\n" + // The size of the top left corner of the actual image in the texture.  Dimensions should be normalized between 0 and these values.
         "uniform float uTime;\n" +
+        "uniform float uValue;\n" +
         "vec2 norm(vec2 inSize) {\n" +
         "  return inSize / uSize;\n" +
         "}\n" +

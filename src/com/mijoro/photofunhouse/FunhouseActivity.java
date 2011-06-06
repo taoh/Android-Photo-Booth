@@ -88,8 +88,9 @@ public class FunhouseActivity extends Activity implements HostApplication {
     }
     
     public void showSlider(boolean show) {
-        mValueSlider.setVisibility(show ? View.VISIBLE : View.GONE);
         mValueSlider.setProgress(50);
+        mValueSlider.setVisibility(show ? View.VISIBLE : View.GONE);
+        
     }
     
     @Override
