@@ -190,14 +190,7 @@ public class FunhouseActivity extends Activity implements HostApplication {
             file.createNewFile();
             FileOutputStream out = new FileOutputStream(file);
             b.compress(Bitmap.CompressFormat.JPEG, 90, out);
-            MediaScannerConnection.scanFile(this,
-                    new String[] { file.toString() }, null,
-                    new MediaScannerConnection.OnScanCompletedListener() {
-                public void onScanCompleted(String path, Uri uri) {
-                    Log.i("ExternalStorage", "Scanned " + path + ":");
-                    Log.i("ExternalStorage", "-> uri=" + uri);
-                }
-           });
+            scanFile(file);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -205,5 +198,16 @@ public class FunhouseActivity extends Activity implements HostApplication {
 
     public void overviewModeShowing(boolean showing) {
         mToolbar.setVisibility(showing ? View.GONE : View.VISIBLE);
+    }
+    
+    private void scanFile(File file) {
+        MediaScannerConnection.scanFile(this,
+                new String[] { file.toString() }, null,
+                new MediaScannerConnection.OnScanCompletedListener() {
+            public void onScanCompleted(String path, Uri uri) {
+                Log.i("ExternalStorage", "Scanned " + path + ":");
+                Log.i("ExternalStorage", "-> uri=" + uri);
+            }
+        });
     }
 }
