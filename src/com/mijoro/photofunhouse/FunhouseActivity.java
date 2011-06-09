@@ -12,10 +12,12 @@ import com.mijoro.photofunhouse.GLLayer.HostApplication;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -188,6 +190,14 @@ public class FunhouseActivity extends Activity implements HostApplication {
             file.createNewFile();
             FileOutputStream out = new FileOutputStream(file);
             b.compress(Bitmap.CompressFormat.JPEG, 90, out);
+            MediaScannerConnection.scanFile(this,
+                    new String[] { file.toString() }, null,
+                    new MediaScannerConnection.OnScanCompletedListener() {
+                public void onScanCompleted(String path, Uri uri) {
+                    Log.i("ExternalStorage", "Scanned " + path + ":");
+                    Log.i("ExternalStorage", "-> uri=" + uri);
+                }
+           });
         } catch (Exception e) {
             e.printStackTrace();
         }
