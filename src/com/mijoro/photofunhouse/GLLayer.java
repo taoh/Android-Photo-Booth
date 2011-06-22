@@ -9,6 +9,7 @@ import java.nio.IntBuffer;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
+import com.google.android.apps.analytics.GoogleAnalyticsTracker;
 import com.mijoro.photofunhouse.CameraPreviewSink.TextureRatio;
 import com.mijoro.photofunhouse.shaders.BulgeShader;
 import com.mijoro.photofunhouse.shaders.DuotoneShader;
@@ -43,6 +44,7 @@ public class GLLayer extends GLSurfaceView implements Renderer, OnSeekBarChangeL
     private float mTouchY = 0.5f;
     private float mLevel = 0.5f;
     private long mAnimationStartTime = 0;
+    private GoogleAnalyticsTracker mTracker;
     
     private HostApplication mHostApplication;
     
@@ -121,6 +123,14 @@ public class GLLayer extends GLSurfaceView implements Renderer, OnSeekBarChangeL
         });
     }
     
+    public void setTracker(GoogleAnalyticsTracker tracker) {
+        mTracker = tracker;
+    }
+    
+    public boolean isOverviewMode() {
+        return mOverviewMode;
+    }
+    
     public void setProgramIndex(int index) {
         if (index >= mPrograms.length) return;
         mProgramCounter = index;
@@ -152,6 +162,16 @@ public class GLLayer extends GLSurfaceView implements Renderer, OnSeekBarChangeL
     public void setOverviewMode(boolean overview) {
         mOverviewMode = overview;
         mHostApplication.overviewModeShowing(overview);
+        if (overview) 
+            mTracker.trackPageView("/overview");
+        else 
+            mTracker.trackPageView("/" + getEffectName());
+    }
+    
+    private String getEffectName() {
+        if (mProgramCounter < 0 || mProgramCounter >= mShaderNames.length)
+            return "unknown";
+        return mShaderNames[mProgramCounter];
     }
     
     @Override
@@ -248,6 +268,18 @@ public class GLLayer extends GLSurfaceView implements Renderer, OnSeekBarChangeL
         mHeight = height;
         GLES20.glViewport(0, 0, width, height);
     }
+    
+    private String[] mShaderNames = {
+            "horizshift",
+            "inverse",
+            "duotone",
+            "mirror",
+            "trippy",
+            "bulge",
+            "kaleidomirror",
+            "pinch",
+            "pixellate"
+    };
 
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         mPrograms = new ShaderProgram[9];

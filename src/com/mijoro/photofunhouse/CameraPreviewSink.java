@@ -94,7 +94,6 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
         
         Camera.Parameters p = mCamera.getParameters();
         if (cameraId == CAMERA_FACING_BACK) p.setRotation(270);
-        System.out.println("Preview framerate: " + p.getPreviewFrameRate());
         p.setPreviewFormat(ImageFormat.NV21);
         Size lowestSetting = p.getSupportedPreviewSizes().get(1);
         p.setPreviewSize(lowestSetting.width, lowestSetting.height);
