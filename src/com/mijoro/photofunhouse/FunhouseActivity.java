@@ -15,7 +15,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.media.MediaScannerConnection;
@@ -30,6 +29,8 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.OrientationEventListener;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.View.OnTouchListener;
@@ -44,6 +45,7 @@ import android.widget.Toast;
 public class FunhouseActivity extends Activity implements HostApplication {
 	private GLLayer glView;
 	private ViewGroup mToolbar;
+	private SurfaceView mSurfaceView;
 	ImageButton mLastPicButton;
 	private String mLastImageURI;
 	private Handler mUIHandler;
@@ -87,7 +89,8 @@ public class FunhouseActivity extends Activity implements HostApplication {
             }
         });
         
-        mCameraSink = new CameraPreviewSink();
+        mSurfaceView = (SurfaceView)findViewById(R.id.surface_view);
+        mCameraSink = new CameraPreviewSink(this, mSurfaceView);
         mUsingFrontCamera = mCameraSink.isFrontFacing();
         glView.setCameraPreviewSink(mCameraSink);
         glView.setHostApplication(this);
@@ -212,7 +215,6 @@ public class FunhouseActivity extends Activity implements HostApplication {
             }
         }
         final Bitmap bitmapToSave;
-        System.out.println("ROTATION NEEDST O BE " + rotation);
         if (rotation != 0) {
             Matrix m = new Matrix();
             m.postRotate(-rotation);

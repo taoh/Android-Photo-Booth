@@ -1,18 +1,24 @@
 
 package com.mijoro.photofunhouse;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.hardware.Camera.Size;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
+import android.view.SurfaceHolder;
+import android.view.SurfaceHolder.Callback;
+import android.view.SurfaceView;
+import android.view.View;
 
-public class CameraPreviewSink implements Camera.PreviewCallback {
+public class CameraPreviewSink implements Camera.PreviewCallback, Callback {
     private Camera mCamera;
     private int mCameraId;
 
@@ -44,8 +50,9 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
             height = h;
         }
     }
-    
-    public CameraPreviewSink() {
+    private SurfaceView mSurfaceView;
+    public CameraPreviewSink(Context c, SurfaceView surfaceView) {
+        mSurfaceView = surfaceView;
         try {
             Class<?> cameraClass = Class.forName("android.hardware.Camera");
             mOpenCameraMethod = cameraClass.getMethod("open", Integer.TYPE);
@@ -57,7 +64,6 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
             e.printStackTrace();
         }
         initCamera(CAMERA_FACING_FRONT);
-        
     }
     
     public void switchCamera() {
@@ -91,27 +97,20 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
             mCamera = null;
         }
         mCamera = openCamera(cameraId);
-        
+        SurfaceHolder holder = mSurfaceView.getHolder();
+        holder.addCallback(this);
+        holder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+
         Camera.Parameters p = mCamera.getParameters();
+
         if (cameraId == CAMERA_FACING_BACK) p.setRotation(270);
         p.setPreviewFormat(ImageFormat.NV21);
         Size lowestSetting = p.getSupportedPreviewSizes().get(1);
         p.setPreviewSize(lowestSetting.width, lowestSetting.height);
-        mPreviewSize = lowestSetting;
+        mPreviewSize = p.getPreviewSize();
         textureSize = Utilities.nextPowerOfTwo(Math.max(mPreviewSize.width, mPreviewSize.height));
         mTextureRatio = new TextureRatio(((float)mPreviewSize.width) / (float)textureSize, 1.0f - (float)mPreviewSize.height / (float)textureSize);
-        mCamera.setParameters(p);
-        int bytelen = (int)(mPreviewSize.width * mPreviewSize.height * ImageFormat.getBitsPerPixel(ImageFormat.NV21) / 8.0f);
-        cameraBytes = new byte[bytelen];
-        rgbBytes = new byte[mPreviewSize.width * mPreviewSize.height * 3];
-        rgbBuffer = ByteBuffer.wrap(rgbBytes);
-        rgbBytes2 = new byte[mPreviewSize.width * mPreviewSize.height * 3];
-        rgbBuffer2 = ByteBuffer.wrap(rgbBytes2);
-        
-        mCamera.addCallbackBuffer(cameraBytes);
-        mCamera.startPreview();
-        mCamera.setPreviewCallbackWithBuffer(this);
-        
+
         cameraTexture = null;
         initialized = false;
     }
@@ -166,5 +165,36 @@ public class CameraPreviewSink implements Camera.PreviewCallback {
         if (mCamera == null)
             initCamera(mCameraId);
     }
+
+    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        mPreviewSize = mCamera.getParameters().getPreviewSize();
+        textureSize = Utilities.nextPowerOfTwo(Math.max(mPreviewSize.width, mPreviewSize.height));
+        mTextureRatio = new TextureRatio(((float)mPreviewSize.width) / (float)textureSize, 1.0f - (float)mPreviewSize.height / (float)textureSize);
+        int bytelen = (int)(mPreviewSize.width * mPreviewSize.height * ImageFormat.getBitsPerPixel(ImageFormat.NV21) / 8.0f);
+        cameraBytes = new byte[bytelen];
+        rgbBytes = new byte[mPreviewSize.width * mPreviewSize.height * 3];
+        rgbBuffer = ByteBuffer.wrap(rgbBytes);
+        rgbBytes2 = new byte[mPreviewSize.width * mPreviewSize.height * 3];
+        rgbBuffer2 = ByteBuffer.wrap(rgbBytes2);
+        
+        mCamera.addCallbackBuffer(cameraBytes);
+        mCamera.setPreviewCallbackWithBuffer(this);
+        
+        mCamera.startPreview();
+        
+        System.out.println("camz CameraPreviewSink startPreview");
+    }
+
+    public void surfaceCreated(SurfaceHolder holder) {
+        try {
+            mCamera.setPreviewDisplay(holder);
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+    }
+
+    public void surfaceDestroyed(SurfaceHolder holder) {}
 
 }
