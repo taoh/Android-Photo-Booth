@@ -90,7 +90,7 @@ public class FunhouseActivity extends Activity implements HostApplication {
         });
         
         mSurfaceView = (SurfaceView)findViewById(R.id.surface_view);
-        mCameraSink = new CameraPreviewSink(this, mSurfaceView);
+        mCameraSink = new CameraPreviewSink(mSurfaceView);
         mUsingFrontCamera = mCameraSink.isFrontFacing();
         glView.setCameraPreviewSink(mCameraSink);
         glView.setHostApplication(this);
@@ -301,5 +301,10 @@ public class FunhouseActivity extends Activity implements HostApplication {
     protected void onDestroy() {
         super.onDestroy();
         mTracker.stop();
+    }
+
+    public void setupComplete() {
+        //mSurfaceView.setVisibility(View.GONE);
+        
     }
 }

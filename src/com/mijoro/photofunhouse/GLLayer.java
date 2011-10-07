@@ -160,6 +160,8 @@ public class GLLayer extends GLSurfaceView implements Renderer, OnSeekBarChangeL
     }
     
     public void setOverviewMode(boolean overview) {
+        System.out.println("Set Overview Mode " + overview);
+        mLevel = 0.5f;
         mOverviewMode = overview;
         mHostApplication.overviewModeShowing(overview);
         if (overview) 
@@ -270,7 +272,7 @@ public class GLLayer extends GLSurfaceView implements Renderer, OnSeekBarChangeL
     }
     
     private String[] mShaderNames = {
-            "horizshift",
+            "solarize",
             "inverse",
             "duotone",
             "mirror",
@@ -283,14 +285,14 @@ public class GLLayer extends GLSurfaceView implements Renderer, OnSeekBarChangeL
 
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         mPrograms = new ShaderProgram[9];
-        mPrograms[7] = new PinchShader(mTexRatio);
+        mPrograms[0] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.solarize));
         mPrograms[1] = new InverseShader(mTexRatio);
         mPrograms[2] = new DuotoneShader(mTexRatio);
         mPrograms[3] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.mirror));
         mPrograms[4] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.trippy));
         mPrograms[5] = new BulgeShader(mTexRatio);
         mPrograms[6] = new KaleidomirrorShader(mTexRatio);
-        mPrograms[0] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.horizshift));
+        mPrograms[7] = new PinchShader(mTexRatio);        
         mPrograms[8] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.pixellate));
         mProgram = mPrograms[0];
 

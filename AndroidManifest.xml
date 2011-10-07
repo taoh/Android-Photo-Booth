@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-      android:versionCode="9"
-      android:versionName="1.2" package="com.mijoro.photofunhouse">
+      android:versionCode="11"
+      android:versionName="1.4" package="com.mijoro.photofunhouse">
     <application android:icon="@drawable/icon" android:label="@string/app_name" android:debuggable="false">
         <activity android:screenOrientation="landscape" android:label="@string/app_name" android:name="FunhouseActivity">
             <intent-filter>

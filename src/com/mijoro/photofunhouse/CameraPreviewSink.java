@@ -39,6 +39,7 @@ public class CameraPreviewSink implements Camera.PreviewCallback, Callback {
     
     private Method mOpenCameraMethod;
     
+    
     private static final int CAMERA_FACING_FRONT = 1;
     private static final int CAMERA_FACING_BACK = 0;
     
@@ -51,7 +52,7 @@ public class CameraPreviewSink implements Camera.PreviewCallback, Callback {
         }
     }
     private SurfaceView mSurfaceView;
-    public CameraPreviewSink(Context c, SurfaceView surfaceView) {
+    public CameraPreviewSink(SurfaceView surfaceView) {
         mSurfaceView = surfaceView;
         try {
             Class<?> cameraClass = Class.forName("android.hardware.Camera");
@@ -91,10 +92,12 @@ public class CameraPreviewSink implements Camera.PreviewCallback, Callback {
     }
     
     private void initCamera(int cameraId) {
+        boolean restartCamera = false;
         if (mCamera != null) {
             mCamera.stopPreview();
             mCamera.release();
             mCamera = null;
+            restartCamera = true;
         }
         mCamera = openCamera(cameraId);
         SurfaceHolder holder = mSurfaceView.getHolder();
@@ -113,6 +116,7 @@ public class CameraPreviewSink implements Camera.PreviewCallback, Callback {
 
         cameraTexture = null;
         initialized = false;
+        if (restartCamera) finishCameraInit();
     }
 
     public TextureRatio getTextureRatio() {
@@ -167,6 +171,10 @@ public class CameraPreviewSink implements Camera.PreviewCallback, Callback {
     }
 
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        finishCameraInit();
+    }
+    
+    private void finishCameraInit() {
         mPreviewSize = mCamera.getParameters().getPreviewSize();
         textureSize = Utilities.nextPowerOfTwo(Math.max(mPreviewSize.width, mPreviewSize.height));
         mTextureRatio = new TextureRatio(((float)mPreviewSize.width) / (float)textureSize, 1.0f - (float)mPreviewSize.height / (float)textureSize);
@@ -181,6 +189,8 @@ public class CameraPreviewSink implements Camera.PreviewCallback, Callback {
         mCamera.setPreviewCallbackWithBuffer(this);
         
         mCamera.startPreview();
+        
+        mSurfaceView.setVisibility(View.GONE);
         
         System.out.println("camz CameraPreviewSink startPreview");
     }
