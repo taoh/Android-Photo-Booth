@@ -36,6 +36,7 @@ import android.view.View.OnClickListener;
 import android.view.View.OnTouchListener;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.view.WindowManager;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
 import android.widget.ImageButton;
@@ -75,7 +76,10 @@ public class FunhouseActivity extends Activity implements HostApplication {
         mOrientationListener.enable();
         mUIHandler = new Handler();
         getWindow().requestFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.main);
+        mValueSlider = (SeekBar)findViewById(R.id.value_slider);
         glView = (GLLayer)findViewById(R.id.FunhouseLayer);
         glView.setTracker(mTracker);
         mToolbar = (ViewGroup)findViewById(R.id.Toolbar);
@@ -102,7 +106,7 @@ public class FunhouseActivity extends Activity implements HostApplication {
             }
         });
         
-        mValueSlider = (SeekBar)findViewById(R.id.value_slider);
+        
         mValueSlider.setOnSeekBarChangeListener(glView);
         mHideSlider = new AlphaAnimation(1.0f, 0.2f);
         mShowSlider = new AlphaAnimation(0.2f, 1.0f);
@@ -156,7 +160,6 @@ public class FunhouseActivity extends Activity implements HostApplication {
     public void showSlider(boolean show) {
         mValueSlider.setProgress(50);
         mValueSlider.setVisibility(show ? View.VISIBLE : View.GONE);
-        
     }
     
     @Override
@@ -262,7 +265,7 @@ public class FunhouseActivity extends Activity implements HostApplication {
     }
 
     public void overviewModeShowing(boolean showing) {
-        mToolbar.setVisibility(showing ? View.GONE : View.VISIBLE);
+        if (showing) showSlider(false);
     }
     
     private void scanFile(File file) {

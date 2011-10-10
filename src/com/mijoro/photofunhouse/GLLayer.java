@@ -160,7 +160,6 @@ public class GLLayer extends GLSurfaceView implements Renderer, OnSeekBarChangeL
     }
     
     public void setOverviewMode(boolean overview) {
-        System.out.println("Set Overview Mode " + overview);
         mLevel = 0.5f;
         mOverviewMode = overview;
         mHostApplication.overviewModeShowing(overview);

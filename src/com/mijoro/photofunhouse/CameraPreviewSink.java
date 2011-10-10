@@ -92,12 +92,10 @@ public class CameraPreviewSink implements Camera.PreviewCallback, Callback {
     }
     
     private void initCamera(int cameraId) {
-        boolean restartCamera = false;
         if (mCamera != null) {
             mCamera.stopPreview();
             mCamera.release();
             mCamera = null;
-            restartCamera = true;
         }
         mCamera = openCamera(cameraId);
         SurfaceHolder holder = mSurfaceView.getHolder();
@@ -116,7 +114,7 @@ public class CameraPreviewSink implements Camera.PreviewCallback, Callback {
 
         cameraTexture = null;
         initialized = false;
-        if (restartCamera) finishCameraInit();
+        finishCameraInit();
     }
 
     public TextureRatio getTextureRatio() {
