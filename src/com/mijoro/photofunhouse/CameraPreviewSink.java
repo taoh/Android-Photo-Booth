@@ -108,6 +108,9 @@ public class CameraPreviewSink implements Camera.PreviewCallback, Callback {
         p.setPreviewFormat(ImageFormat.NV21);
         Size lowestSetting = p.getSupportedPreviewSizes().get(1);
         p.setPreviewSize(lowestSetting.width, lowestSetting.height);
+        
+        mCamera.setParameters(p);
+        p = mCamera.getParameters();
         mPreviewSize = p.getPreviewSize();
         textureSize = Utilities.nextPowerOfTwo(Math.max(mPreviewSize.width, mPreviewSize.height));
         mTextureRatio = new TextureRatio(((float)mPreviewSize.width) / (float)textureSize, 1.0f - (float)mPreviewSize.height / (float)textureSize);

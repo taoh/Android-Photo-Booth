@@ -19,6 +19,7 @@ import com.mijoro.photofunhouse.shaders.PinchShader;
 import com.mijoro.photofunhouse.shaders.ShaderProgram;
 
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
@@ -45,6 +46,8 @@ public class GLLayer extends GLSurfaceView implements Renderer, OnSeekBarChangeL
     private float mLevel = 0.5f;
     private long mAnimationStartTime = 0;
     private GoogleAnalyticsTracker mTracker;
+    
+    boolean mIsTablet = false;
     
     private HostApplication mHostApplication;
     
@@ -125,6 +128,10 @@ public class GLLayer extends GLSurfaceView implements Renderer, OnSeekBarChangeL
     
     public void setTracker(GoogleAnalyticsTracker tracker) {
         mTracker = tracker;
+    }
+    
+    public void setIsTablet(boolean isTablet) {
+        
     }
     
     public boolean isOverviewMode() {
@@ -287,7 +294,10 @@ public class GLLayer extends GLSurfaceView implements Renderer, OnSeekBarChangeL
         mPrograms[0] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.solarize));
         mPrograms[1] = new InverseShader(mTexRatio);
         mPrograms[2] = new DuotoneShader(mTexRatio);
-        mPrograms[3] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.mirror));
+        if (mIsTablet)
+            mPrograms[3] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.mirrortablet));
+        else
+            mPrograms[3] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.mirror));
         mPrograms[4] = new ShaderProgram(mTexRatio, ShaderProgram.buildFShader(getContext(), R.raw.trippy));
         mPrograms[5] = new BulgeShader(mTexRatio);
         mPrograms[6] = new KaleidomirrorShader(mTexRatio);
